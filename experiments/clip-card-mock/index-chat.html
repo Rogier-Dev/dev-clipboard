@@ -1,0 +1,980 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dev Clipboard Chat Vault Mock</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #08080a;
+        --panel: #141416;
+        --panel-2: #1d1d21;
+        --line: #2f2f36;
+        --line-soft: #24242a;
+        --text: #f5f5f6;
+        --muted: #a1a1aa;
+        --sub: #71717a;
+        --brand: #ff9400;
+        --brand-soft: rgba(255, 148, 0, 0.14);
+        --blue: #68c7ff;
+        --blue-soft: rgba(0, 136, 255, 0.16);
+        --green: #34c759;
+        --green-soft: rgba(52, 199, 89, 0.16);
+        --red: #ff453a;
+        --red-soft: rgba(255, 69, 58, 0.16);
+        --yellow: #ffe600;
+        --yellow-soft: rgba(255, 230, 0, 0.12);
+        --pink: #ff4bd8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        overflow: hidden;
+        background: #050506;
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .workspace-bg {
+        position: fixed;
+        inset: 0;
+        background-image: url("./assets/cursor-workspace.png");
+        background-position: center;
+        background-size: cover;
+        filter: brightness(0.58) saturate(0.94);
+        transform: scale(1.012);
+      }
+
+      .workspace-scrim {
+        position: fixed;
+        inset: 0;
+        background:
+          linear-gradient(90deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.34) 44%, rgba(0, 0, 0, 0.5)),
+          linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.32));
+      }
+
+      .desktop-hint {
+        position: fixed;
+        left: 38px;
+        top: 38px;
+        max-width: 440px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      .desktop-hint h1 {
+        margin: 0 0 10px;
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 28px;
+      }
+
+      .desktop-hint p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .drawer {
+        position: fixed;
+        inset: 24px 28px 24px auto;
+        width: min(900px, calc(100vw - 72px));
+        display: grid;
+        grid-template-rows: 72px 58px minmax(0, 1fr);
+        border: 1px solid rgba(255, 255, 255, 0.13);
+        border-radius: 24px 0 0 24px;
+        overflow: hidden;
+        background: rgba(14, 14, 16, 0.92);
+        box-shadow:
+          -42px 0 130px rgba(0, 0, 0, 0.72),
+          0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+        backdrop-filter: blur(22px);
+      }
+
+      .global-bar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 14px;
+        padding: 0 18px;
+        border-bottom: 1px solid var(--line-soft);
+        background: rgba(10, 10, 12, 0.84);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .mark {
+        width: 32px;
+        height: 32px;
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        color: #101010;
+        background: linear-gradient(135deg, #ffb250, #ff9400);
+        font-weight: 900;
+      }
+
+      .brand-name {
+        font-weight: 850;
+        white-space: nowrap;
+      }
+
+      .vault-tabs {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        height: 34px;
+        padding: 0 12px;
+        border-radius: 12px;
+        color: var(--muted);
+        background: transparent;
+        border: 0;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .tab.active {
+        color: var(--text);
+        background: var(--panel-2);
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--brand);
+      }
+
+      .dot.chat {
+        background: var(--blue);
+      }
+
+      .dot.terminal {
+        background: var(--red);
+      }
+
+      .quick-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .lucide {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .density-actions {
+        display: inline-flex;
+        height: 52px;
+        padding: 4px;
+        gap: 4px;
+        border: 1px solid var(--line-soft);
+        border-radius: 18px;
+        background: var(--panel-2);
+      }
+
+      .density-actions button {
+        width: 44px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 14px;
+        color: var(--muted);
+        background: transparent;
+      }
+
+      .density-actions .active {
+        color: #111;
+        background: var(--brand);
+      }
+
+      .density-actions button:first-child .lucide {
+        width: 15px;
+        height: 15px;
+      }
+
+      .density-actions button:nth-child(2) .lucide {
+        width: 19px;
+        height: 19px;
+      }
+
+      .density-actions button:nth-child(3) .lucide {
+        width: 23px;
+        height: 23px;
+      }
+
+      .icon-btn,
+      .text-btn {
+        height: 34px;
+        border: 1px solid var(--line-soft);
+        border-radius: 11px;
+        color: var(--muted);
+        background: var(--panel-2);
+        font-size: 12px;
+        font-weight: 850;
+      }
+
+      .icon-btn {
+        width: 36px;
+        display: inline-grid;
+        place-items: center;
+      }
+
+      .quick-actions .icon-btn {
+        width: 52px;
+        height: 52px;
+        border-radius: 18px;
+      }
+
+      .text-btn {
+        padding: 0 12px;
+      }
+
+      .text-btn.primary {
+        color: #111;
+        background: var(--brand);
+        border-color: transparent;
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 9px;
+        align-items: center;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .search {
+        height: 38px;
+        width: 100%;
+        min-width: 0;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        outline: none;
+        background: var(--panel);
+        color: var(--text);
+        padding: 0 13px;
+      }
+
+      .segmented {
+        display: inline-flex;
+        height: 38px;
+        padding: 3px;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: var(--panel);
+      }
+
+      .segmented span {
+        display: inline-flex;
+        align-items: center;
+        padding: 0 10px;
+        border-radius: 9px;
+        color: var(--sub);
+        font-size: 12px;
+        font-weight: 850;
+      }
+
+      .segmented .active {
+        color: var(--text);
+        background: var(--panel-2);
+      }
+
+      .content {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 276px;
+      }
+
+      .list {
+        min-width: 0;
+        overflow: auto;
+        padding: 14px 16px 86px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(22, 22, 25, 0.94);
+        overflow: hidden;
+      }
+
+      .card + .card {
+        margin-top: 10px;
+      }
+
+      .card.selected {
+        border-color: rgba(255, 148, 0, 0.8);
+        box-shadow: 0 0 0 1px rgba(255, 148, 0, 0.28);
+      }
+
+      .card.selected.danger {
+        border-color: rgba(255, 69, 58, 0.86);
+        box-shadow:
+          0 0 0 1px rgba(255, 69, 58, 0.34),
+          0 18px 54px rgba(255, 69, 58, 0.08);
+      }
+
+      .row-card {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .card-main {
+        min-width: 0;
+      }
+
+      .badge-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        height: 21px;
+        padding: 0 8px;
+        border-radius: 999px;
+        color: var(--muted);
+        background: var(--panel-2);
+        font-size: 10px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+
+      .badge.editor {
+        color: var(--brand);
+        background: var(--brand-soft);
+      }
+
+      .badge.chat {
+        color: var(--blue);
+        background: var(--blue-soft);
+      }
+
+      .badge.terminal,
+      .badge.risk {
+        color: #ffb4ae;
+        background: var(--red-soft);
+      }
+
+      .badge.safe {
+        color: var(--green);
+        background: var(--green-soft);
+      }
+
+      .badge.check {
+        color: var(--yellow);
+        background: var(--yellow-soft);
+      }
+
+      .clip-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        margin-bottom: 5px;
+      }
+
+      .clip-title strong {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 15px;
+      }
+
+      .clip-title .meta {
+        flex: 0 0 auto;
+        color: var(--sub);
+        font-size: 11px;
+      }
+
+      .snippet {
+        max-height: 66px;
+        overflow: hidden;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: #111113;
+        padding: 9px 11px;
+        font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+        white-space: pre;
+      }
+
+      .snippet.tall {
+        max-height: 96px;
+      }
+
+      .snippet.danger {
+        border-color: rgba(255, 69, 58, 0.34);
+        background: linear-gradient(180deg, rgba(255, 69, 58, 0.08), rgba(17, 17, 19, 0.96));
+      }
+
+      .tag {
+        color: #8bd7ff;
+      }
+
+      .attr {
+        color: var(--yellow);
+        font-style: italic;
+      }
+
+      .str,
+      .path {
+        color: var(--pink);
+      }
+
+      .cmd {
+        color: #d7e7ff;
+      }
+
+      .flag {
+        color: var(--yellow);
+      }
+
+      .note-line {
+        display: flex;
+        gap: 8px;
+        min-width: 0;
+        margin-top: 8px;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+
+      .note-line b {
+        flex: 0 0 auto;
+        color: var(--brand);
+        font-size: 10px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .note-line span {
+        min-width: 0;
+        overflow: hidden;
+        color: #dedee2;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .card-actions {
+        display: grid;
+        grid-auto-flow: column;
+        gap: 6px;
+        align-content: start;
+      }
+
+      .card-actions .icon-btn {
+        width: 42px;
+        height: 40px;
+        border-radius: 14px;
+      }
+
+      details.more {
+        border-top: 1px solid var(--line-soft);
+      }
+
+      details.more summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 36px;
+        padding: 0 12px;
+        color: var(--muted);
+        cursor: default;
+        font-size: 12px;
+        font-weight: 850;
+        list-style: none;
+      }
+
+      details.more summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .more-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding: 0 12px 12px;
+      }
+
+      .more-item {
+        min-height: 58px;
+        padding: 9px;
+        border-radius: 11px;
+        background: var(--panel-2);
+      }
+
+      .more-item strong {
+        display: block;
+        font-size: 12px;
+      }
+
+      .more-item span {
+        display: block;
+        margin-top: 4px;
+        color: var(--sub);
+        font-size: 10px;
+      }
+
+      .preview-panel {
+        min-width: 0;
+        border-left: 1px solid var(--line-soft);
+        padding: 14px;
+        overflow: auto;
+        background: rgba(10, 10, 12, 0.62);
+      }
+
+      .preview-card {
+        border: 1px solid var(--line);
+        border-radius: 17px;
+        background: rgba(22, 22, 25, 0.9);
+        overflow: hidden;
+      }
+
+      .preview-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 13px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .preview-head strong {
+        font-size: 15px;
+      }
+
+      .preview-head span {
+        color: var(--sub);
+        font-size: 11px;
+      }
+
+      .preview-body {
+        padding: 13px;
+      }
+
+      .section {
+        padding: 12px;
+        border: 1px solid var(--line-soft);
+        border-radius: 13px;
+        background: rgba(255, 255, 255, 0.035);
+      }
+
+      .section + .section {
+        margin-top: 9px;
+      }
+
+      .section h2 {
+        margin: 0 0 6px;
+        color: var(--brand);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .section p {
+        margin: 0;
+        color: #e4e4e7;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .section.danger {
+        border-color: rgba(255, 69, 58, 0.34);
+        background: rgba(255, 69, 58, 0.09);
+      }
+
+      .section.danger h2 {
+        color: #ffb4ae;
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .metric {
+        min-height: 54px;
+        padding: 9px;
+        border-radius: 11px;
+        background: var(--panel-2);
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 15px;
+      }
+
+      .metric span {
+        display: block;
+        margin-top: 3px;
+        color: var(--sub);
+        font-size: 10px;
+      }
+
+      .bottom-bar {
+        position: fixed;
+        left: 50%;
+        bottom: 38px;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        min-height: 46px;
+        width: min(900px, calc(100vw - 72px));
+        padding: 8px 10px 8px 20px;
+        border: 1px solid rgba(255, 148, 0, 0.34);
+        border-radius: 18px;
+        background: rgba(16, 16, 18, 0.96);
+        box-shadow: 0 20px 70px rgba(0, 0, 0, 0.36);
+      }
+
+      .bottom-bar strong {
+        font-size: 18px;
+        white-space: nowrap;
+      }
+
+      .bottom-bar span {
+        color: var(--muted);
+        font-size: 16px;
+        white-space: nowrap;
+      }
+
+      .bottom-bar .text-btn {
+        height: 44px;
+        min-width: 138px;
+        border-radius: 16px;
+        font-size: 15px;
+      }
+
+      .hint-chip {
+        position: fixed;
+        right: 944px;
+        top: 72px;
+        transform: translateY(-50%);
+        padding: 9px 12px;
+        border-radius: 999px;
+        color: #111;
+        background: var(--brand);
+        font-size: 11px;
+        font-weight: 900;
+        box-shadow: 0 16px 44px rgba(0, 0, 0, 0.45);
+      }
+
+      @media (max-width: 980px) {
+        .drawer {
+          width: min(760px, calc(100vw - 28px));
+          inset: 14px 14px 14px auto;
+          border-radius: 22px;
+        }
+
+        .content {
+          grid-template-columns: minmax(0, 1fr);
+        }
+
+        .preview-panel {
+          display: none;
+        }
+
+        .toolbar {
+          grid-template-columns: minmax(0, 1fr) auto;
+        }
+
+        .toolbar .segmented:nth-of-type(2),
+        .toolbar .text-btn {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="workspace-bg" aria-hidden="true"></div>
+    <div class="workspace-scrim" aria-hidden="true"></div>
+    <div class="hint-chip" aria-hidden="true">⌘⇧V</div>
+
+    <section class="drawer" aria-label="Dev Clipboard Chat Vault">
+      <header class="global-bar">
+        <nav class="vault-tabs" aria-label="Vaults">
+          <button class="tab"><span class="dot"></span>All Vaults</button>
+          <button class="tab active"><span class="dot chat"></span>Chat</button>
+          <button class="tab"><span class="dot"></span>Editor</button>
+          <button class="tab"><span class="dot terminal"></span>Terminal</button>
+        </nav>
+        <div class="quick-actions">
+          <div class="density-actions" aria-label="Card density">
+            <button title="Compact"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></button>
+            <button class="active" title="Normal"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
+            <button title="Large"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/></svg></button>
+          </div>
+          <button class="icon-btn" title="Settings"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8.92 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.14.47.5.84.96 1H21a2 2 0 1 1 0 4h-.09c-.46.16-.82.53-.96 1Z"/></svg></button>
+        </div>
+      </header>
+
+      <div class="toolbar">
+        <input class="search" value="refactor prompt markdown error log" aria-label="Search chat clips" />
+        <div class="segmented">
+          <span class="active">Recent</span>
+          <span>Tokens</span>
+          <span>Blocks</span>
+        </div>
+        <button class="text-btn">Prompt Sets</button>
+      </div>
+
+      <div class="content">
+        <main class="list">
+          <article class="card selected">
+            <div class="row-card">
+              <div class="card-main">
+                <div class="badge-row">
+                  <span class="badge chat">Chat</span>
+                  <span class="badge">Prompt</span>
+                  <span class="badge check">Contains code</span>
+                  <span class="badge">~1.8k tokens</span>
+                </div>
+                <div class="clip-title">
+                  <strong>Refactor review request</strong>
+                  <span class="meta">2 code blocks · last pasted today</span>
+                </div>
+                <div class="snippet tall">このReactコンポーネントを読みやすく整理してください。
+制約:
+- UIの見た目は変えない
+- 不要な抽象化は増やさない
+```tsx
+function ClipCard(...) { ... }
+```</div>
+                <div class="note-line">
+                  <b>Before</b>
+                  <span>対象ファイル名と意図を1行足す。不要なログは削ってからAIへ渡す。</span>
+                </div>
+              </div>
+              <div class="card-actions">
+                <button class="icon-btn" title="Copy"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8a2 2 0 0 1 2 2v2"/><path d="M8 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7"/><path d="M9 4a3 3 0 0 1 6 0"/><path d="M16 14h6"/><path d="m19 11 3 3-3 3"/></svg></button>
+                <button class="icon-btn" title="Edit note"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                <button class="icon-btn" title="More"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+              </div>
+            </div>
+            <details class="more">
+              <summary>Space preview / details <span>⌄</span></summary>
+              <div class="more-grid">
+                <div class="more-item"><strong>Purpose</strong><span>Refactor without UI change</span></div>
+                <div class="more-item"><strong>Size</strong><span>~1.8k tokens · 2 blocks</span></div>
+                <div class="more-item"><strong>Check</strong><span>Remove unrelated logs</span></div>
+              </div>
+            </details>
+          </article>
+
+          <article class="card">
+            <div class="row-card">
+              <div class="card-main">
+                <div class="badge-row">
+                  <span class="badge chat">Chat</span>
+                  <span class="badge">Markdown</span>
+                  <span class="badge risk">Large</span>
+                  <span class="badge">~8.6k tokens</span>
+                </div>
+                <div class="clip-title">
+                  <strong>Setup notes with error log</strong>
+                  <span class="meta">3 code blocks · never pasted</span>
+                </div>
+                <div class="snippet tall"># セットアップ時のエラー
+`pnpm dev` 実行時にViteの依存解決で失敗。
+```txt
+Error: failed to resolve import ...
+```
+試したこと: reinstall / cache clean</div>
+                <div class="note-line">
+                  <b>Before</b>
+                  <span>AIへ渡す前に重複ログを削る。必要なら最後の30行だけでよい。</span>
+                </div>
+              </div>
+              <div class="card-actions">
+                <button class="icon-btn" title="Copy"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8a2 2 0 0 1 2 2v2"/><path d="M8 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7"/><path d="M9 4a3 3 0 0 1 6 0"/><path d="M16 14h6"/><path d="m19 11 3 3-3 3"/></svg></button>
+                <button class="icon-btn" title="Edit note"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                <button class="icon-btn" title="More"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="row-card">
+              <div class="card-main">
+                <div class="badge-row">
+                  <span class="badge chat">Chat</span>
+                  <span class="badge">Prompt</span>
+                  <span class="badge safe">Reusable</span>
+                  <span class="badge">~420 tokens</span>
+                </div>
+                <div class="clip-title">
+                  <strong>Ask for implementation plan</strong>
+                  <span class="meta">pinned · used weekly</span>
+                </div>
+                <div class="snippet">まず実装せず、既存コードを読んで実装計画を出してください。
+計画には以下を含めてください。
+- 変更ファイル
+- リスク
+- 検証方法</div>
+                <div class="note-line">
+                  <b>Use</b>
+                  <span>Codex/Cursorで大きめの変更前に使う。実装開始を抑止したい時。</span>
+                </div>
+              </div>
+              <div class="card-actions">
+                <button class="icon-btn" title="Copy"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8a2 2 0 0 1 2 2v2"/><path d="M8 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7"/><path d="M9 4a3 3 0 0 1 6 0"/><path d="M16 14h6"/><path d="m19 11 3 3-3 3"/></svg></button>
+                <button class="icon-btn" title="Edit note"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                <button class="icon-btn" title="More"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="row-card">
+              <div class="card-main">
+                <div class="badge-row">
+                  <span class="badge chat">Chat</span>
+                  <span class="badge">Review</span>
+                  <span class="badge check">Sensitive?</span>
+                  <span class="badge">~2.4k tokens</span>
+                </div>
+                <div class="clip-title">
+                  <strong>Bug report template</strong>
+                  <span class="meta">copied 12d ago</span>
+                </div>
+                <div class="snippet tall">現象:
+期待:
+実際:
+再現手順:
+環境:
+ログ:
+```txt
+[paste error log here]
+```</div>
+                <div class="note-line">
+                  <b>Before</b>
+                  <span>ログ内のAPIキー、メールアドレス、プロジェクト固有URLを確認。</span>
+                </div>
+              </div>
+              <div class="card-actions">
+                <button class="icon-btn" title="Copy"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8a2 2 0 0 1 2 2v2"/><path d="M8 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7"/><path d="M9 4a3 3 0 0 1 6 0"/><path d="M16 14h6"/><path d="m19 11 3 3-3 3"/></svg></button>
+                <button class="icon-btn" title="Edit note"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                <button class="icon-btn" title="More"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="row-card">
+              <div class="card-main">
+                <div class="badge-row">
+                  <span class="badge chat">Chat</span>
+                  <span class="badge">Summary</span>
+                  <span class="badge safe">Low context</span>
+                  <span class="badge">~260 tokens</span>
+                </div>
+                <div class="clip-title">
+                  <strong>Summarize meeting notes</strong>
+                  <span class="meta">last pasted yesterday</span>
+                </div>
+                <div class="snippet">以下のメモを、決定事項・未決事項・次のアクションに分けて整理してください。
+出力は箇条書きで、曖昧な点は質問として残してください。</div>
+                <div class="note-line">
+                  <b>Use</b>
+                  <span>打ち合わせ後に使う定型プロンプト。本文だけ差し替える。</span>
+                </div>
+              </div>
+              <div class="card-actions">
+                <button class="icon-btn" title="Copy"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8a2 2 0 0 1 2 2v2"/><path d="M8 4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7"/><path d="M9 4a3 3 0 0 1 6 0"/><path d="M16 14h6"/><path d="m19 11 3 3-3 3"/></svg></button>
+                <button class="icon-btn" title="Edit note"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                <button class="icon-btn" title="More"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+              </div>
+            </div>
+          </article>
+        </main>
+
+        <aside class="preview-panel" aria-label="Preview">
+          <div class="preview-card">
+            <div class="preview-head">
+              <div>
+                <strong>Refactor review request</strong><br />
+                <span>Space preview · prompt card</span>
+              </div>
+              <button class="icon-btn" title="Close"><svg class="lucide" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+            </div>
+            <div class="preview-body">
+              <div class="section">
+                <h2>Purpose</h2>
+                <p>既存UIを変えずに、Reactコンポーネントの読みやすさと責務分離だけを相談するためのプロンプト。</p>
+              </div>
+              <div class="section">
+                <h2>Before sending</h2>
+                <p>対象ファイル名、期待する粒度、変更してほしくないUI条件を追記する。不要なログや別コンポーネントは削る。</p>
+              </div>
+              <div class="section">
+                <h2>Prompt shape</h2>
+                <p>依頼文、制約、コードブロック、期待する出力形式の順。コードブロックが長い場合は関連箇所だけにする。</p>
+              </div>
+              <div class="section">
+                <h2>Context & Size</h2>
+                <div class="metric-grid">
+                  <div class="metric"><strong>~1.8k</strong><span>tokens</span></div>
+                  <div class="metric"><strong>2</strong><span>code blocks</span></div>
+                  <div class="metric"><strong>Medium</strong><span>AI context</span></div>
+                  <div class="metric"><strong>0</strong><span>secrets found</span></div>
+                </div>
+              </div>
+              <div class="section">
+                <h2>Reuse note</h2>
+                <p>Cursor、Codex、ChatGPTいずれでも使える。実装を急がせず、まずレビュー観点を出してもらう用途。</p>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <div class="bottom-bar">
+      <strong>3 selected</strong>
+      <span>Build a prompt set with ~4.4k tokens.</span>
+      <button class="text-btn">Preview set</button>
+      <button class="text-btn primary">Copy prompt set</button>
+    </div>
+  </body>
+</html>

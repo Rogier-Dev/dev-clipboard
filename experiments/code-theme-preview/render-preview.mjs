@@ -1,0 +1,236 @@
+import fs from "node:fs/promises";
+import { codeToHtml } from "shiki";
+
+const sample = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tauri + React + Typescript</title>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`;
+
+const cursorLikeTheme = {
+  name: "dev-clipboard-cursor-like",
+  type: "dark",
+  colors: {
+    "editor.background": "#121212",
+    "editor.foreground": "#d8d8d8",
+    "editorLineNumber.foreground": "#525252",
+    "editor.selectionBackground": "#264f78",
+    "editor.inactiveSelectionBackground": "#3a3d41",
+  },
+  tokenColors: [
+    { scope: ["comment", "punctuation.definition.comment"], settings: { foreground: "#6a9955", fontStyle: "italic" } },
+    { scope: ["keyword", "storage.type", "storage.modifier"], settings: { foreground: "#fff200", fontStyle: "italic" } },
+    { scope: ["entity.name.tag", "support.class.component"], settings: { foreground: "#8bd7ff" } },
+    { scope: ["entity.other.attribute-name", "meta.attribute"], settings: { foreground: "#fff200", fontStyle: "italic" } },
+    { scope: ["string", "punctuation.definition.string"], settings: { foreground: "#ff4bd8" } },
+    { scope: ["constant.numeric", "constant.language"], settings: { foreground: "#ffb86c" } },
+    { scope: ["punctuation.definition.tag", "punctuation.separator.key-value.html"], settings: { foreground: "#8bd7ff" } },
+    { scope: ["text.html.basic"], settings: { foreground: "#d8d8d8" } },
+  ],
+};
+
+const highlighted = await codeToHtml(sample, {
+  lang: "html",
+  theme: cursorLikeTheme,
+  transformers: [
+    {
+      pre(node) {
+        node.properties.class = "code-preview";
+      },
+    },
+  ],
+});
+
+const html = `<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dev Clipboard Code Theme Preview</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0b0c;
+        --surface: #141416;
+        --surface-2: #1c1c1f;
+        --line: #2b2b31;
+        --text: #f2f2f4;
+        --muted: #8e8e93;
+        --brand: #ff9400;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 20% 10%, rgba(255, 148, 0, .18), transparent 28rem),
+          linear-gradient(135deg, #070708, #17171a 65%, #0d0d0f);
+        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+        color: var(--text);
+      }
+
+      .shell {
+        width: min(1120px, calc(100vw - 48px));
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 18px;
+        align-items: stretch;
+      }
+
+      .clip-card {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(20, 20, 22, .96);
+        box-shadow: 0 22px 80px rgba(0, 0, 0, .36);
+      }
+
+      .card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, .025);
+      }
+
+      .badges {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        height: 24px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: var(--surface-2);
+        color: #d7d7da;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .badge.editor { background: rgba(0, 136, 255, .16); color: #8bd7ff; }
+      .badge.safe { background: rgba(52, 199, 89, .16); color: #34c759; }
+
+      .meta {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .code-wrap {
+        max-height: 520px;
+        overflow: auto;
+      }
+
+      .code-preview {
+        margin: 0 !important;
+        padding: 18px 18px 22px !important;
+        background: #121212 !important;
+        font-family: "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
+        font-size: 18px !important;
+        line-height: 1.48 !important;
+        tab-size: 2;
+      }
+
+      .code-preview code {
+        font-family: inherit !important;
+      }
+
+      .note-panel {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(20, 20, 22, .92);
+        padding: 18px;
+        box-shadow: 0 22px 80px rgba(0, 0, 0, .24);
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+
+      .note-panel p {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .note {
+        padding: 14px;
+        border-radius: 12px;
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        margin-top: 10px;
+      }
+
+      .note strong {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--brand);
+        font-size: 12px;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+      }
+
+      .note span {
+        display: block;
+        color: #e4e4e7;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="clip-card">
+        <div class="card-top">
+          <div class="badges">
+            <span class="badge editor">Editor</span>
+            <span class="badge">HTML</span>
+            <span class="badge safe">Low risk</span>
+          </div>
+          <div class="meta">Cursor-like theme preview</div>
+        </div>
+        <div class="code-wrap">${highlighted}</div>
+      </section>
+
+      <aside class="note-panel">
+        <h1>メモ付きコードクリップ</h1>
+        <p>Cursor/VS Codeで見慣れた色に近づけることで、保管庫内でもコード構造を直感的に確認できる。</p>
+        <div class="note">
+          <strong>Description</strong>
+          <span>Vite + React + TauriのHTMLエントリーポイント。</span>
+        </div>
+        <div class="note">
+          <strong>When to use</strong>
+          <span>新規Tauriプロジェクトの初期HTML構成を確認・再利用したいとき。</span>
+        </div>
+        <div class="note">
+          <strong>Before paste</strong>
+          <span>title、favicon、scriptのパスがプロジェクト構成と一致しているか確認。</span>
+        </div>
+      </aside>
+    </main>
+  </body>
+</html>`;
+
+await fs.writeFile("preview.html", html);
+console.log("Wrote preview.html");

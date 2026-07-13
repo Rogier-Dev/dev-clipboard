@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dev Clipboard Clip Card Mock</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0b0d;
+        --panel: #151518;
+        --panel-2: #1d1d22;
+        --panel-3: #24242a;
+        --line: #303038;
+        --line-soft: #25252c;
+        --text: #f4f4f5;
+        --muted: #a1a1aa;
+        --sub: #71717a;
+        --brand: #ff9400;
+        --brand-soft: rgba(255, 148, 0, 0.14);
+        --blue: #68c7ff;
+        --blue-soft: rgba(0, 136, 255, 0.16);
+        --green: #34c759;
+        --green-soft: rgba(52, 199, 89, 0.16);
+        --yellow: #ffe600;
+        --yellow-soft: rgba(255, 230, 0, 0.12);
+        --red: #ff453a;
+        --red-soft: rgba(255, 69, 58, 0.16);
+        --pink: #ff4bd8;
+        --shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 18% 8%, rgba(255, 148, 0, 0.18), transparent 28rem),
+          radial-gradient(circle at 82% 16%, rgba(0, 136, 255, 0.1), transparent 24rem),
+          linear-gradient(135deg, #070708, #141419 64%, #0c0c0e);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .app {
+        width: min(1440px, calc(100vw - 40px));
+        min-height: calc(100vh - 40px);
+        margin: 20px auto;
+        display: grid;
+        grid-template-columns: 244px minmax(0, 1fr) 374px;
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        overflow: hidden;
+        background: rgba(17, 17, 20, 0.9);
+        box-shadow: var(--shadow);
+      }
+
+      .sidebar {
+        padding: 18px;
+        background: rgba(10, 10, 12, 0.82);
+        border-right: 1px solid var(--line);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 22px;
+      }
+
+      .mark {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        color: #101010;
+        font-weight: 900;
+        background: linear-gradient(135deg, #ffb250, #ff9400);
+      }
+
+      .brand-title {
+        font-weight: 800;
+        letter-spacing: 0;
+      }
+
+      .brand-sub {
+        color: var(--sub);
+        font-size: 12px;
+      }
+
+      .nav-label {
+        margin: 22px 0 10px;
+        color: var(--sub);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .vault {
+        width: 100%;
+        min-height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: 12px;
+        color: var(--muted);
+        background: transparent;
+        text-align: left;
+        cursor: default;
+      }
+
+      .vault.active {
+        color: var(--text);
+        background: var(--panel-2);
+      }
+
+      .vault-name {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 750;
+      }
+
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--brand);
+      }
+
+      .dot.chat {
+        background: var(--blue);
+      }
+
+      .dot.editor {
+        background: var(--brand);
+      }
+
+      .dot.terminal {
+        background: var(--red);
+      }
+
+      .vault-count {
+        color: var(--sub);
+        font-size: 12px;
+      }
+
+      .storage {
+        margin-top: 24px;
+        padding: 14px;
+        border: 1px solid var(--line-soft);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .storage-top {
+        display: flex;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .bar {
+        height: 7px;
+        margin: 12px 0 10px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--panel-3);
+      }
+
+      .bar-fill {
+        height: 100%;
+        width: 42%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--brand), #ff453a);
+      }
+
+      .cleanup-link {
+        color: var(--brand);
+        font-size: 12px;
+        font-weight: 750;
+      }
+
+      .main {
+        min-width: 0;
+        display: grid;
+        grid-template-rows: auto auto minmax(0, 1fr);
+      }
+
+      .topbar {
+        padding: 20px 24px 14px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .title-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 26px;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .mode-toggle {
+        display: inline-flex;
+        padding: 4px;
+        border-radius: 12px;
+        background: var(--panel-2);
+        border: 1px solid var(--line-soft);
+      }
+
+      .mode-toggle span {
+        padding: 7px 12px;
+        border-radius: 9px;
+        color: var(--sub);
+        font-size: 12px;
+        font-weight: 750;
+      }
+
+      .mode-toggle span.active {
+        color: var(--text);
+        background: var(--panel-3);
+      }
+
+      .search-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .search {
+        height: 42px;
+        border: 1px solid var(--line-soft);
+        border-radius: 13px;
+        background: var(--panel);
+        color: var(--text);
+        padding: 0 14px;
+        outline: none;
+      }
+
+      .filter {
+        display: inline-flex;
+        align-items: center;
+        height: 42px;
+        padding: 0 13px;
+        border-radius: 13px;
+        color: var(--muted);
+        background: var(--panel);
+        border: 1px solid var(--line-soft);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .insight-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        padding: 14px 24px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+
+      .insight {
+        min-height: 58px;
+        padding: 11px 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid var(--line-soft);
+      }
+
+      .insight strong {
+        display: block;
+        font-size: 17px;
+      }
+
+      .insight span {
+        display: block;
+        margin-top: 3px;
+        color: var(--sub);
+        font-size: 11px;
+      }
+
+      .cards {
+        min-height: 0;
+        overflow: auto;
+        padding: 18px 24px 92px;
+      }
+
+      .card {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(21, 21, 24, 0.92);
+        box-shadow: 0 12px 34px rgba(0, 0, 0, 0.18);
+      }
+
+      .card + .card {
+        margin-top: 14px;
+      }
+
+      .card.selected {
+        border-color: rgba(255, 148, 0, 0.8);
+        box-shadow: 0 0 0 1px rgba(255, 148, 0, 0.28), 0 18px 42px rgba(0, 0, 0, 0.28);
+      }
+
+      .card-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 13px 14px 10px;
+      }
+
+      .badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        align-items: center;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 23px;
+        padding: 0 9px;
+        border-radius: 999px;
+        color: var(--muted);
+        background: var(--panel-2);
+        font-size: 11px;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .badge.editor {
+        color: var(--brand);
+        background: var(--brand-soft);
+      }
+
+      .badge.chat {
+        color: var(--blue);
+        background: var(--blue-soft);
+      }
+
+      .badge.terminal {
+        color: #ffb4ae;
+        background: var(--red-soft);
+      }
+
+      .badge.safe {
+        color: var(--green);
+        background: var(--green-soft);
+      }
+
+      .badge.check {
+        color: var(--yellow);
+        background: var(--yellow-soft);
+      }
+
+      .badge.risk,
+      .badge.large {
+        color: #ffb4ae;
+        background: var(--red-soft);
+      }
+
+      .card-meta {
+        color: var(--sub);
+        font-size: 11px;
+        white-space: nowrap;
+        padding-top: 5px;
+      }
+
+      .preview {
+        margin: 0 14px;
+        border-radius: 14px;
+        background: #111113;
+        border: 1px solid var(--line-soft);
+      }
+
+      .code {
+        padding: 14px 16px 15px;
+        overflow: auto;
+        font-family: "SF Mono", Menlo, Monaco, Consolas, monospace;
+        font-size: 14px;
+        line-height: 1.55;
+        color: #e6e6e8;
+        white-space: pre;
+      }
+
+      .tag {
+        color: #8bd7ff;
+      }
+
+      .attr {
+        color: var(--yellow);
+        font-style: italic;
+      }
+
+      .str {
+        color: var(--pink);
+      }
+
+      .cmd {
+        color: #d7e7ff;
+      }
+
+      .flag {
+        color: var(--yellow);
+      }
+
+      .path {
+        color: var(--pink);
+      }
+
+      .md {
+        padding: 14px 16px;
+        color: #e5e7eb;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .md h3 {
+        margin: 0 0 7px;
+        font-size: 16px;
+      }
+
+      .md p {
+        margin: 0 0 9px;
+        color: var(--muted);
+      }
+
+      .md code {
+        color: var(--yellow);
+        font-family: "SF Mono", Menlo, monospace;
+      }
+
+      .color-preview {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 14px;
+        padding: 14px;
+      }
+
+      .swatch {
+        min-height: 76px;
+        border-radius: 14px;
+        background: #ff9400;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+      }
+
+      .color-lines {
+        display: grid;
+        gap: 7px;
+        align-content: center;
+        font-family: "SF Mono", Menlo, monospace;
+        color: #e5e7eb;
+        font-size: 13px;
+      }
+
+      .note-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px 14px 13px;
+      }
+
+      .note-label {
+        flex: 0 0 auto;
+        min-width: 82px;
+        color: var(--brand);
+        font-size: 11px;
+        font-weight: 900;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .note-text {
+        min-width: 0;
+        color: #dedee2;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+
+      .actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 14px 13px;
+      }
+
+      .action-left,
+      .action-right {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .icon-btn,
+      .text-btn {
+        height: 32px;
+        border: 1px solid var(--line-soft);
+        border-radius: 10px;
+        color: var(--muted);
+        background: var(--panel-2);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .icon-btn {
+        width: 34px;
+      }
+
+      .text-btn {
+        padding: 0 11px;
+      }
+
+      .text-btn.primary {
+        color: #101010;
+        border-color: transparent;
+        background: var(--brand);
+      }
+
+      .detail {
+        padding: 20px;
+        background: rgba(10, 10, 12, 0.72);
+        border-left: 1px solid var(--line);
+        overflow: auto;
+      }
+
+      .detail-title {
+        margin: 0;
+        font-size: 22px;
+      }
+
+      .detail-sub {
+        margin: 6px 0 18px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .detail-section {
+        margin-top: 12px;
+        padding: 14px;
+        border: 1px solid var(--line-soft);
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.035);
+      }
+
+      .detail-section h2 {
+        margin: 0 0 9px;
+        color: var(--brand);
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .detail-section p {
+        margin: 0;
+        color: #e4e4e7;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      .metric {
+        min-height: 66px;
+        padding: 11px;
+        border-radius: 13px;
+        background: var(--panel-2);
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 17px;
+      }
+
+      .metric span {
+        display: block;
+        margin-top: 4px;
+        color: var(--sub);
+        font-size: 11px;
+      }
+
+      .bottom-bar {
+        position: fixed;
+        left: 50%;
+        bottom: 34px;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 52px;
+        padding: 8px 10px 8px 16px;
+        border: 1px solid rgba(255, 148, 0, 0.38);
+        border-radius: 18px;
+        background: rgba(17, 17, 20, 0.96);
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.38);
+      }
+
+      .bottom-bar strong {
+        font-size: 13px;
+      }
+
+      .bottom-bar span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      @media (max-width: 1120px) {
+        .app {
+          grid-template-columns: 210px minmax(0, 1fr);
+        }
+
+        .detail {
+          display: none;
+        }
+
+        .insight-strip {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="mark">D</div>
+          <div>
+            <div class="brand-title">Dev Clipboard</div>
+            <div class="brand-sub">Understand before paste</div>
+          </div>
+        </div>
+
+        <div class="nav-label">Vaults</div>
+        <button class="vault">
+          <span class="vault-name"><span class="dot chat"></span>Chat</span>
+          <span class="vault-count">42</span>
+        </button>
+        <button class="vault active">
+          <span class="vault-name"><span class="dot editor"></span>Editor</span>
+          <span class="vault-count">128</span>
+        </button>
+        <button class="vault">
+          <span class="vault-name"><span class="dot terminal"></span>Terminal CLI</span>
+          <span class="vault-count">31</span>
+        </button>
+
+        <div class="nav-label">Smart Views</div>
+        <button class="vault">
+          <span class="vault-name">Pinned</span>
+          <span class="vault-count">18</span>
+        </button>
+        <button class="vault">
+          <span class="vault-name">Large clips</span>
+          <span class="vault-count">7</span>
+        </button>
+        <button class="vault">
+          <span class="vault-name">Needs review</span>
+          <span class="vault-count">5</span>
+        </button>
+
+        <div class="storage">
+          <div class="storage-top">
+            <strong>Storage</strong>
+            <span>840 MB</span>
+          </div>
+          <div class="bar"><div class="bar-fill"></div></div>
+          <div class="cleanup-link">Review large unused clips</div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <section class="topbar">
+          <div class="title-row">
+            <div>
+              <h1>Editor Vault</h1>
+              <div class="subtitle">コード、カラー、ファイルパス、設定断片を意味付きで保管します。</div>
+            </div>
+            <div class="mode-toggle" aria-label="Card density">
+              <span>Compact</span>
+              <span class="active">Normal</span>
+              <span>Large</span>
+            </div>
+          </div>
+          <div class="search-row">
+            <input class="search" value="html vite setup" aria-label="Search clips" />
+            <div class="filter">Sort: Recent</div>
+            <div class="filter">Filter: All</div>
+          </div>
+        </section>
+
+        <section class="insight-strip">
+          <div class="insight">
+            <strong>~42k</strong>
+            <span>estimated tokens in Editor</span>
+          </div>
+          <div class="insight">
+            <strong>7</strong>
+            <span>large clips to review</span>
+          </div>
+          <div class="insight">
+            <strong>12</strong>
+            <span>clips with notes</span>
+          </div>
+          <div class="insight">
+            <strong>3</strong>
+            <span>items need before-paste check</span>
+          </div>
+        </section>
+
+        <section class="cards">
+          <article class="card selected">
+            <div class="card-head">
+              <div class="badges">
+                <span class="badge editor">Editor</span>
+                <span class="badge">HTML</span>
+                <span class="badge safe">Safe</span>
+                <span class="badge">86 lines</span>
+                <span class="badge">~1.2k tokens</span>
+              </div>
+              <div class="card-meta">Last pasted 2d ago</div>
+            </div>
+            <div class="preview">
+              <div class="code"><span class="tag">&lt;!doctype</span> <span class="attr">html</span><span class="tag">&gt;</span>
+<span class="tag">&lt;html</span> <span class="attr">lang</span>=<span class="str">"en"</span><span class="tag">&gt;</span>
+  <span class="tag">&lt;head&gt;</span>
+    <span class="tag">&lt;meta</span> <span class="attr">charset</span>=<span class="str">"UTF-8"</span> <span class="tag">/&gt;</span>
+    <span class="tag">&lt;link</span> <span class="attr">rel</span>=<span class="str">"icon"</span> <span class="attr">href</span>=<span class="str">"/vite.svg"</span> <span class="tag">/&gt;</span>
+    <span class="tag">&lt;title&gt;</span>Tauri + React + Typescript<span class="tag">&lt;/title&gt;</span>
+  <span class="tag">&lt;/head&gt;</span></div>
+            </div>
+            <div class="note-row">
+              <div class="note-label">Before paste</div>
+              <div class="note-text">title、favicon、scriptのパスがプロジェクト構成と一致しているか確認。</div>
+            </div>
+            <div class="actions">
+              <div class="action-left">
+                <button class="text-btn primary">Copy</button>
+                <button class="text-btn">Preview</button>
+                <button class="text-btn">Edit note</button>
+              </div>
+              <div class="action-right">
+                <button class="icon-btn">⇲</button>
+                <button class="icon-btn">⋯</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="badges">
+                <span class="badge terminal">Terminal CLI</span>
+                <span class="badge">Shell</span>
+                <span class="badge risk">Destructive</span>
+                <span class="badge">2 lines</span>
+                <span class="badge">Low context</span>
+              </div>
+              <div class="card-meta">Copied today</div>
+            </div>
+            <div class="preview">
+              <div class="code"><span class="cmd">cd</span> <span class="path">~/project/dev-clipboard</span>
+<span class="cmd">rm</span> <span class="flag">-rf</span> <span class="path">dist</span></div>
+            </div>
+            <div class="note-row">
+              <div class="note-label">Before paste</div>
+              <div class="note-text">`dist` を消す前に `pwd` と `ls dist` を確認。Auto Paste不可。</div>
+            </div>
+            <div class="actions">
+              <div class="action-left">
+                <button class="text-btn primary">Copy</button>
+                <button class="text-btn">Preview</button>
+                <button class="text-btn">Edit note</button>
+              </div>
+              <div class="action-right">
+                <button class="icon-btn">⇲</button>
+                <button class="icon-btn">⋯</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="badges">
+                <span class="badge chat">Chat</span>
+                <span class="badge">Markdown</span>
+                <span class="badge check">Contains shell</span>
+                <span class="badge">3 code blocks</span>
+                <span class="badge large">~8.6k tokens</span>
+              </div>
+              <div class="card-meta">Never pasted</div>
+            </div>
+            <div class="preview">
+              <div class="md">
+                <h3>セットアップ手順</h3>
+                <p>以下を実行してローカル環境を起動します。</p>
+                <code>pnpm install</code><br />
+                <code>pnpm dev</code>
+              </div>
+            </div>
+            <div class="note-row">
+              <div class="note-label">Description</div>
+              <div class="note-text">READMEからコピーした初期セットアップ手順。AIに渡す前に不要なログを削る。</div>
+            </div>
+            <div class="actions">
+              <div class="action-left">
+                <button class="text-btn primary">Copy</button>
+                <button class="text-btn">Preview</button>
+                <button class="text-btn">Edit note</button>
+              </div>
+              <div class="action-right">
+                <button class="icon-btn">⇲</button>
+                <button class="icon-btn">⋯</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="badges">
+                <span class="badge editor">Editor</span>
+                <span class="badge">Color</span>
+                <span class="badge safe">Safe</span>
+                <span class="badge">12 chars</span>
+              </div>
+              <div class="card-meta">Pinned</div>
+            </div>
+            <div class="preview">
+              <div class="color-preview">
+                <div class="swatch"></div>
+                <div class="color-lines">
+                  <div>HEX&nbsp;&nbsp;#FF9400</div>
+                  <div>RGB&nbsp;&nbsp;rgb(255, 148, 0)</div>
+                  <div>HSL&nbsp;&nbsp;hsl(35, 100%, 50%)</div>
+                </div>
+              </div>
+            </div>
+            <div class="note-row">
+              <div class="note-label">When to use</div>
+              <div class="note-text">Dev ClipboardのブランドCTA。ペースト前にHEX/RGBを選べる。</div>
+            </div>
+            <div class="actions">
+              <div class="action-left">
+                <button class="text-btn primary">Copy HEX</button>
+                <button class="text-btn">RGB</button>
+                <button class="text-btn">Edit note</button>
+              </div>
+              <div class="action-right">
+                <button class="icon-btn">⇲</button>
+                <button class="icon-btn">⋯</button>
+              </div>
+            </div>
+          </article>
+        </section>
+      </main>
+
+      <aside class="detail">
+        <h2 class="detail-title">HTML entrypoint</h2>
+        <p class="detail-sub">Editor Vault · HTML · Cursor-like preview · selected clip</p>
+
+        <div class="detail-section">
+          <h2>Description</h2>
+          <p>Vite + React + TauriのHTMLエントリーポイント。プロジェクト初期状態の確認用。</p>
+        </div>
+
+        <div class="detail-section">
+          <h2>When to use</h2>
+          <p>新規Tauriプロジェクトの初期HTML構成を確認・再利用したいとき。</p>
+        </div>
+
+        <div class="detail-section">
+          <h2>Before paste</h2>
+          <p>title、favicon、scriptのパスがプロジェクト構成と一致しているか確認。</p>
+        </div>
+
+        <div class="detail-section">
+          <h2>Context & Size</h2>
+          <div class="metric-grid">
+            <div class="metric">
+              <strong>~1.2k</strong>
+              <span>estimated tokens</span>
+            </div>
+            <div class="metric">
+              <strong>86</strong>
+              <span>lines</span>
+            </div>
+            <div class="metric">
+              <strong>14 KB</strong>
+              <span>stored size</span>
+            </div>
+            <div class="metric">
+              <strong>Low</strong>
+              <span>AI context weight</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h2>Permissions</h2>
+          <p>Auto PasteはOFF。Copy後にユーザーが貼り先アプリでCommand+Vを押す設計。</p>
+        </div>
+      </aside>
+    </div>
+
+    <div class="bottom-bar">
+      <strong>2 clips selected</strong>
+      <span>Combined preview will run risk checks across all lines.</span>
+      <button class="text-btn">Preview combined</button>
+      <button class="text-btn primary">Copy combined</button>
+      <button class="text-btn">Clear</button>
+    </div>
+  </body>
+</html>
+
