@@ -1533,6 +1533,12 @@ button {
     background: rgba(255, 63, 87, 0.1);
 }
 
+.meta .sensitiveTag {
+    border-color: var(--risk-review-bg);
+    color: var(--risk-review-bg-active);
+    background: var(--surface-control);
+}
+
 .meta .weightTag-size {
     border-color: rgba(255, 185, 85, 0.32);
     color: #ffc56f;

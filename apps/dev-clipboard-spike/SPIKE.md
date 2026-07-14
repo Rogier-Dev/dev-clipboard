@@ -96,6 +96,7 @@ Completed:
 - Development demo clips are no longer inserted at startup.
 - Development builds expose explicit `Add demo clips` and `Remove demo clips only` actions in Settings.
 - Demo rows use both a visible `[Demo]` title prefix and an SQLite `is_demo` flag. Existing fixed `demo-` IDs are migrated without changing real clipboard history rows.
+- Obvious secrets are blocked before SQLite persistence. Current rules cover private keys, GitHub tokens, AWS access keys, common API keys, and password/token assignments.
 
 ## Known Gaps / Pending Decisions
 
@@ -107,6 +108,7 @@ Completed:
 - History deletion and ignored app settings still need product-quality implementation.
 - Clipboard capture is currently text-first. Rich data, images, and advanced file handling are outside this spike.
 - Internal copy guard intentionally ignores clipboard changes while Dev Clipboard is focused; this avoids history pollution but can miss some edge cases.
+- Secret blocking is intentionally heuristic. Ambiguous text still needs user judgment.
 
 ## MVP Checklist
 
@@ -117,7 +119,6 @@ See `MVP_CHECKLIST.md` for the current MVP scope mapped to implemented, partial,
 The detailed order and completion criteria now live in `MVP_CHECKLIST.md`. The next implementation slice is:
 
 1. Implement confirmed bulk history deletion and keep SQLite/FTS changes consistent.
-2. Decide and document the minimum protection for secrets and sensitive clipboard text.
-3. Decide whether real source-app detection and ignored apps are MVP requirements.
-4. Replace remaining placeholder settings with working controls or explicit `Future` states.
-5. Extract classification and risk rules into testable modules and add regression tests.
+2. Decide whether real source-app detection and ignored apps are MVP requirements.
+3. Replace remaining placeholder settings with working controls or explicit `Future` states.
+4. Extract classification, sensitive-content, and risk rules into testable modules and add regression tests.

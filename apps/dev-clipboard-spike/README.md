@@ -21,6 +21,7 @@ Validated in this spike:
 - Search hit source display such as `Matched in Body`, `Matched in Before`, or `Matched in Dev metadata`.
 - Copy-back flow: review a saved clip, copy it back to the system clipboard, then paste manually with `Command+V`.
 - Internal copy guard: clipboard changes while Dev Clipboard is focused are not saved as new clips.
+- Secret blocking: obvious private keys, tokens, API keys, and password assignments are not saved.
 
 Intentionally not included in this spike:
 
@@ -37,6 +38,12 @@ Intentionally not included in this spike:
 Demo clips are not inserted automatically. In a development build, open Settings and use `Add demo clips` when UI coverage for Safe, Review, Risk, color, URL, or heavier preview cards is needed.
 
 Every demo row has a visible `[Demo]` title prefix and an internal SQLite `is_demo` flag. `Remove demo clips only` deletes only flagged demo rows and leaves copied user history unchanged. These controls are not rendered in production builds.
+
+## Sensitive Clipboard Text
+
+The MVP policy is to block obvious secrets before SQLite persistence. Private keys, GitHub tokens, AWS access keys, common API keys, and `.env`-style password/token assignments are skipped with a visible status message.
+
+This is a local heuristic, not a complete data-loss prevention system. Ambiguous text is still captured so users can keep normal development snippets.
 
 ## Stack
 

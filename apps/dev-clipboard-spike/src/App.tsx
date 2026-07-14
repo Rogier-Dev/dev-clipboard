@@ -483,6 +483,30 @@ const DEV_SEARCH_SYNONYMS: Array<[RegExp, string]> = [
   ],
 ];
 
+const SENSITIVE_CLIP_RULES: Array<{ pattern: RegExp; label: string }> = [
+  {
+    pattern: /-----BEGIN (?:OPENSSH |RSA |DSA |EC |PGP )?PRIVATE KEY-----/i,
+    label: "Private key",
+  },
+  {
+    pattern:
+      /\b[A-Z0-9_-]*(?:PASSWORD|PASSWD|PWD|SECRET|TOKEN|API[_-]?KEY|ACCESS[_-]?KEY|PRIVATE[_-]?KEY)[A-Z0-9_-]*\s*=\s*['"]?[^'"\s]{8,}/i,
+    label: "Secret assignment",
+  },
+  {
+    pattern: /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/,
+    label: "GitHub token",
+  },
+  {
+    pattern: /\bAKIA[0-9A-Z]{16}\b/,
+    label: "AWS access key",
+  },
+  {
+    pattern: /\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{16,}\b/,
+    label: "API key",
+  },
+];
+
 function createId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -555,6 +579,15 @@ function classifyRisk(
   text: string,
 ): Pick<Clip, "risk" | "riskLabel" | "before"> {
   const trimmed = text.trim();
+  const sensitiveMatch = detectSensitiveClip(text);
+
+  if (sensitiveMatch) {
+    return {
+      risk: "check",
+      riskLabel: sensitiveMatch,
+      before: "Do not paste secrets into prompts, logs, tickets, or shared docs.",
+    };
+  }
 
   if (/docker\s+compose\s+down\b.*--volumes/.test(trimmed)) {
     return {
@@ -602,6 +635,10 @@ function classifyRisk(
     riskLabel: "Safe",
     before: "Ready to copy. Paste manually with Command+V.",
   };
+}
+
+function detectSensitiveClip(text: string) {
+  return SENSITIVE_CLIP_RULES.find((rule) => rule.pattern.test(text))?.label;
 }
 
 function makeTitle(text: string, type: string) {
@@ -1046,6 +1083,10 @@ function highlightQuery(text: string, query: string) {
 
 function extraMetaTags(clip: Clip) {
   const tags: Array<{ className: string; label: string }> = [];
+
+  if (detectSensitiveClip(clip.body)) {
+    tags.push({ className: "sensitiveTag", label: "Sensitive" });
+  }
 
   if (clip.tokenEstimate >= 10000) {
     tags.push({
@@ -1842,6 +1883,10 @@ function App() {
     if (!trimmed) {
       throw new Error("Clip text cannot be empty");
     }
+    const sensitiveMatch = detectSensitiveClip(value);
+    if (sensitiveMatch) {
+      throw new Error(`Sensitive content blocked: ${sensitiveMatch}`);
+    }
 
     const vault = detectVault(value);
     const type = detectType(value, vault);
@@ -2084,6 +2129,14 @@ function App() {
 
         if (normalized === lastWrittenRef.current) {
           setStatus("Copied from Dev Clipboard. Not saved again.");
+          return;
+        }
+
+        const sensitiveMatch = detectSensitiveClip(text);
+        if (sensitiveMatch) {
+          setStatus(
+            `Sensitive clipboard content was not saved: ${sensitiveMatch}.`,
+          );
           return;
         }
 
@@ -4108,6 +4161,16 @@ function App() {
                       <div>
                         <strong>Automatic capture</strong>
                         <p>Save clipboard changes from other apps.</p>
+                      </div>
+                      <span className="mockToggle on">On</span>
+                    </div>
+                    <div className="settingRow">
+                      <div>
+                        <strong>Secret blocking</strong>
+                        <p>
+                          Obvious private keys, tokens, and password
+                          assignments are not saved.
+                        </p>
                       </div>
                       <span className="mockToggle on">On</span>
                     </div>
