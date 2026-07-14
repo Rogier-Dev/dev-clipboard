@@ -1429,10 +1429,19 @@ button:active {
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    max-width: 100%;
     border: 1px solid var(--border-subtle);
     border-radius: 999px;
     padding: 4px 7px;
     background: var(--tag-bg);
+}
+
+.meta .tagLabel {
+    min-width: 0;
+    max-width: 16ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .meta::-webkit-scrollbar {
@@ -1666,7 +1675,7 @@ button:active {
 .useMeta {
     color: var(--text-muted);
     font-size: 11px;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 }
 
 .titleUseMeta {
@@ -2044,10 +2053,13 @@ button:active {
 
 .previewTitle {
     display: block;
+    max-width: 100%;
     margin-bottom: 5px;
     color: var(--preview-title);
     font-size: 13px;
     line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .previewMeta {
@@ -2076,6 +2088,8 @@ button:active {
     color: var(--preview-body);
     font-size: 12px;
     line-height: 1.45;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .urlText {
@@ -2472,7 +2486,10 @@ button:active {
 
 .clipTextEditor textarea {
     min-height: 180px;
+    min-width: 0;
+    max-width: 100%;
     resize: vertical;
+    overflow-x: hidden;
     border: 1px solid var(--accent-border);
     border-radius: 12px;
     padding: 15px;
@@ -2483,6 +2500,9 @@ button:active {
         monospace;
     font-size: 13px;
     line-height: 1.6;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: pre-wrap;
     outline: none;
     box-shadow: 0 0 0 1px var(--field-focus-shadow);
 }
@@ -2570,7 +2590,10 @@ button:active {
 }
 
 .clipFooter p {
+    min-width: 0;
     margin: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .noteStack {
@@ -2582,6 +2605,12 @@ button:active {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+}
+
+.noteLine p {
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 .noteLine.emptyNote {
@@ -2594,6 +2623,8 @@ button:active {
 
 .noteValue {
     color: var(--note-body);
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .emptyNote .noteValue {
@@ -2646,12 +2677,18 @@ button:active {
 
 .noteEditor textarea {
     min-height: 74px;
+    min-width: 0;
+    max-width: 100%;
     resize: vertical;
+    overflow-x: hidden;
     border: 1px solid var(--border-default);
     border-radius: 10px;
     padding: 10px 11px;
     color: var(--text-primary);
     background: var(--surface-editor);
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: pre-wrap;
     outline: none;
 }
 
