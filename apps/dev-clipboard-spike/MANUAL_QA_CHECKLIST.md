@@ -42,7 +42,7 @@ Status:
 | [x] | Source app | Finderでファイルパスをコピー | Source appがFinder系として保存される | 2026-07-15 新規カード追加、タグ先頭の`Fi`アイコン、エラーなしを確認。由来表示は現状アイコンのみで、明示テキストは改善候補 |
 | [x] | Internal copy guard | Dev Clipboard内のCopyボタンを押す | コピー先として使われるが、新規カードは増えない | 2026-07-15 重複カードなし、use count増加、`Copied to clipboard: Internal copy guard` 表示、エラーなし |
 | [x] | Duplicate | 同じ本文を連続コピー | 重複保存方針どおりに扱われ、UIが破綻しない | 2026-07-15 1回目追加、2回目は重複カードなし、エラーなし。ステータスは同一クリップボード内容の再コピーを区別できず `Captured clipboard text into SQLite` のまま |
-| [ ] | Long text | 1000文字以上の本文をコピー | カードが表示され、縦スクロールできる | |
+| [x] | Long text | 1000文字以上の本文をコピー | カードが表示され、縦スクロールできる | 2026-07-15 追加、横はみ出し、Expand/Collapse、Notes表示、検索窓、エラーなしOK。既存コードブロック内の横スクロールを発見し、折り返しCSSを追加 |
 | [ ] | Japanese | 日本語文をコピー | 文字化けせず、検索できる | |
 | [ ] | URL | `https://example.com/docs` をコピー | TypeがURLになり、表示がはみ出さない | |
 | [ ] | Color | `#36C5F0` をコピー | TypeがColorになり、色プレビューが表示される | |

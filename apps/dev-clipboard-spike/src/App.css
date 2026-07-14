@@ -2413,7 +2413,8 @@ button:active {
 }
 
 .codeBlock {
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     max-height: 160px;
     margin: 0;
     border: 1px solid var(--border-subtle);
@@ -2427,6 +2428,8 @@ button:active {
     font-size: 13px;
     line-height: 1.6;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .shikiBlock {
@@ -2434,19 +2437,32 @@ button:active {
 }
 
 .shikiBlock pre {
-    overflow: visible;
+    overflow: visible !important;
     min-height: 100%;
+    max-width: 100%;
     margin: 0 !important;
     padding: 15px !important;
     background: transparent !important;
-    white-space: pre-wrap;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .shikiBlock code {
     display: block;
+    max-width: 100%;
     font-family:
         "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
         monospace;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.shikiBlock span {
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 .clipTextEditor {
