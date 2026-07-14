@@ -107,9 +107,18 @@ npm --prefix apps/dev-clipboard-spike run build
 
 The frontend build currently passes. Use `npm run build:quiet` when you only need pass/fail output without the Vite asset list.
 
+## Risk Rule Tests
+
+```sh
+npm run test:risk
+```
+
+This runs the command and sensitive-text classification tests without adding a separate test runner dependency.
+
 ## Useful Files
 
 - `src/App.tsx` — main spike UI, clipboard polling, SQLite access, notes, search, and copy-back flow.
+- `src/clipRules.ts` — risk and sensitive-text classification rules.
 - `src/App.css` — spike UI styling.
 - `src-tauri/src/lib.rs` — Tauri setup, global shortcut, panel behavior, and plugin registration.
 - `src-tauri/capabilities/default.json` — Tauri permissions for clipboard, SQL, window controls, and global shortcut.

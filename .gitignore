@@ -21,6 +21,7 @@ pnpm-debug.log*
 # Local scratch/output
 tmp/
 output/
+.test-dist/
 
 # Editor metadata
 .idea/

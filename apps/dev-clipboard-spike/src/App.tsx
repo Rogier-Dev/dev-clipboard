@@ -13,6 +13,7 @@ import {
   createSingletonShorthands,
 } from "@shikijs/core";
 import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
+import { classifyRisk, detectSensitiveClip, type RiskLevel } from "./clipRules";
 import {
   ArrowDownUp,
   Check,
@@ -53,7 +54,6 @@ import {
 } from "lucide-react";
 import "./App.css";
 
-type RiskLevel = "safe" | "check" | "destructive";
 type Vault = "Chat" | "Editor" | "Terminal";
 type NoteField = "description" | "whenToUse" | "before";
 type CardSize = "compact" | "normal" | "large";
@@ -511,30 +511,6 @@ const DEV_SEARCH_SYNONYMS: Array<[RegExp, string]> = [
   ],
 ];
 
-const SENSITIVE_CLIP_RULES: Array<{ pattern: RegExp; label: string }> = [
-  {
-    pattern: /-----BEGIN (?:OPENSSH |RSA |DSA |EC |PGP )?PRIVATE KEY-----/i,
-    label: "Private key",
-  },
-  {
-    pattern:
-      /\b[A-Z0-9_-]*(?:PASSWORD|PASSWD|PWD|SECRET|TOKEN|API[_-]?KEY|ACCESS[_-]?KEY|PRIVATE[_-]?KEY)[A-Z0-9_-]*\s*=\s*['"]?[^'"\s]{8,}/i,
-    label: "Secret assignment",
-  },
-  {
-    pattern: /\bgh[pousr]_[A-Za-z0-9_]{20,}\b/,
-    label: "GitHub token",
-  },
-  {
-    pattern: /\bAKIA[0-9A-Z]{16}\b/,
-    label: "AWS access key",
-  },
-  {
-    pattern: /\b(?:sk|rk|pk)_(?:live|test)_[A-Za-z0-9]{16,}\b/,
-    label: "API key",
-  },
-];
-
 function createId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
@@ -601,72 +577,6 @@ function shouldHighlightClip(clip: Clip) {
   return ["command", "code", "markdown", "svg", "text"].includes(
     previewType(clip),
   );
-}
-
-function classifyRisk(
-  text: string,
-): Pick<Clip, "risk" | "riskLabel" | "before"> {
-  const trimmed = text.trim();
-  const sensitiveMatch = detectSensitiveClip(text);
-
-  if (sensitiveMatch) {
-    return {
-      risk: "check",
-      riskLabel: sensitiveMatch,
-      before: "Do not paste secrets into prompts, logs, tickets, or shared docs.",
-    };
-  }
-
-  if (/docker\s+compose\s+down\b.*--volumes/.test(trimmed)) {
-    return {
-      risk: "destructive",
-      riskLabel: "Deletes volumes",
-      before: "Check project and volume names before copying.",
-    };
-  }
-
-  if (/\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-rf|-fr)\b/.test(trimmed)) {
-    return {
-      risk: "destructive",
-      riskLabel: "Recursive delete",
-      before: "Run pwd and ls target first. Confirm the path is not empty.",
-    };
-  }
-
-  if (/\bgit\s+(reset\s+--hard|clean\s+-)/.test(trimmed)) {
-    return {
-      risk: "destructive",
-      riskLabel: "Working tree reset",
-      before: "Check git status and stash or commit important changes first.",
-    };
-  }
-
-  if (/\b(mv|cp)\b.*(\.env|id_rsa|secret|token|password)/i.test(trimmed)) {
-    return {
-      risk: "check",
-      riskLabel: "Sensitive path",
-      before:
-        "Confirm source, destination, and whether secrets should be copied.",
-    };
-  }
-
-  if (/\bsudo\b|\bcurl\b.*\|\s*(sh|bash)/.test(trimmed)) {
-    return {
-      risk: "check",
-      riskLabel: "Privilege or remote script",
-      before: "Read the command source before copying.",
-    };
-  }
-
-  return {
-    risk: "safe",
-    riskLabel: "Safe",
-    before: "Ready to copy. Paste manually with Command+V.",
-  };
-}
-
-function detectSensitiveClip(text: string) {
-  return SENSITIVE_CLIP_RULES.find((rule) => rule.pattern.test(text))?.label;
 }
 
 function makeTitle(text: string, type: string) {

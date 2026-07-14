@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "build:quiet": "tsc && vite build --logLevel warn",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test:risk": "tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --outDir .test-dist --rootDir src src/clipRules.ts && node --test tests/risk-rules.test.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
