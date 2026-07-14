@@ -6,6 +6,15 @@ export type RiskClassification = {
   before: string;
 };
 
+export type SensitiveClipSummary = {
+  label: string;
+  body: string;
+  title: string;
+  description: string;
+  whenToUse: string;
+  before: string;
+};
+
 const SENSITIVE_CLIP_RULES: Array<{ pattern: RegExp; label: string }> = [
   {
     pattern: /-----BEGIN (?:OPENSSH |RSA |DSA |EC |PGP )?PRIVATE KEY-----/i,
@@ -32,6 +41,27 @@ const SENSITIVE_CLIP_RULES: Array<{ pattern: RegExp; label: string }> = [
 
 export function detectSensitiveClip(text: string) {
   return SENSITIVE_CLIP_RULES.find((rule) => rule.pattern.test(text))?.label;
+}
+
+export function createSensitiveClipSummary(
+  label: string,
+  capturedAt = new Date(),
+): SensitiveClipSummary {
+  return {
+    label,
+    body: [
+      "[Sensitive content blocked]",
+      `Type: ${label}`,
+      `Captured: ${capturedAt.toISOString()}`,
+      "",
+      "Original clipboard text was not saved.",
+    ].join("\n"),
+    title: `Sensitive content blocked: ${label}`,
+    description: `${label} detected. The original clipboard text was intentionally not saved.`,
+    whenToUse: "Use only in the intended credential field or secret manager.",
+    before:
+      "Do not paste into AI chat, logs, tickets, commits, or shared documents. Rotate the secret if it was exposed.",
+  };
 }
 
 export function classifyRisk(text: string): RiskClassification {

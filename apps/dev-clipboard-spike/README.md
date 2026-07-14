@@ -25,7 +25,7 @@ Validated in this spike:
 - Internal copy guard: clipboard changes while Dev Clipboard is focused are not saved as new clips.
 - Best-effort macOS source attribution using the frontmost app name and bundle ID, without Accessibility permission.
 - Bundle-ID based ignored-app settings checked before a clip is stored.
-- Secret blocking: obvious private keys, tokens, API keys, and password assignments are not saved.
+- Secret blocking: obvious private keys, tokens, API keys, and password assignments save a risk note without saving the original secret text.
 
 Intentionally not included in this spike:
 
@@ -45,7 +45,7 @@ Every demo row has a visible `[Demo]` title prefix and an internal SQLite `is_de
 
 ## Sensitive Clipboard Text
 
-The MVP policy is to block obvious secrets before SQLite persistence. Private keys, GitHub tokens, AWS access keys, common API keys, and `.env`-style password/token assignments are skipped with a visible status message.
+The MVP policy is to block obvious secrets before SQLite persistence. Private keys, GitHub tokens, AWS access keys, common API keys, and `.env`-style password/token assignments create a `Risk` card that explains what was blocked, but the original clipboard text is not saved.
 
 This is a local heuristic, not a complete data-loss prevention system. Ambiguous text is still captured so users can keep normal development snippets.
 

@@ -99,7 +99,7 @@ Completed:
 - Development demo clips are no longer inserted at startup.
 - Development builds expose explicit `Add demo clips` and `Remove demo clips only` actions in Settings.
 - Demo rows use both a visible `[Demo]` title prefix and an SQLite `is_demo` flag. Existing fixed `demo-` IDs are migrated without changing real clipboard history rows.
-- Obvious secrets are blocked before SQLite persistence. Current rules cover private keys, GitHub tokens, AWS access keys, common API keys, and password/token assignments.
+- Obvious secrets are blocked before SQLite persistence. Current rules cover private keys, GitHub tokens, AWS access keys, common API keys, and password/token assignments. The original secret text is not saved; instead, the app saves a `Risk` note explaining the blocked content type and what to check before reuse.
 
 ## Known Gaps / Pending Decisions
 

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   classifyRisk,
+  createSensitiveClipSummary,
   detectSensitiveClip,
 } from "../.test-dist/clipRules.js";
 
@@ -64,4 +65,18 @@ test("detects obvious sensitive clipboard text", () => {
     assert.equal(detectSensitiveClip(text), label, text);
     assert.equal(classifyRisk(text).risk, "check", text);
   }
+});
+
+test("creates a blocked sensitive summary without storing secret text", () => {
+  const summary = createSensitiveClipSummary(
+    "GitHub token",
+    new Date("2026-07-15T00:00:00.000Z"),
+  );
+
+  assert.equal(summary.title, "Sensitive content blocked: GitHub token");
+  assert.match(summary.body, /Original clipboard text was not saved/);
+  assert.match(summary.body, /2026-07-15T00:00:00.000Z/);
+  assert.doesNotMatch(summary.body, /ghp_/);
+  assert.match(summary.description, /intentionally not saved/);
+  assert.match(summary.before, /Do not paste into AI chat/);
 });

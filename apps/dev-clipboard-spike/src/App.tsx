@@ -13,7 +13,12 @@ import {
   createSingletonShorthands,
 } from "@shikijs/core";
 import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
-import { classifyRisk, detectSensitiveClip, type RiskLevel } from "./clipRules";
+import {
+  classifyRisk,
+  createSensitiveClipSummary,
+  detectSensitiveClip,
+  type RiskLevel,
+} from "./clipRules";
 import {
   ArrowDownUp,
   Check,
@@ -613,6 +618,34 @@ function createClip(text: string, sourceApplication?: SourceApplication): Clip {
     charCount: text.length,
     lineCount: countLines(text),
     tokenEstimate: estimateTokens(text),
+    isDemo: false,
+    sourceAppName: sourceApplication?.name ?? "",
+    sourceAppBundleId: sourceApplication?.bundleId ?? "",
+  };
+}
+
+function createBlockedSensitiveClip(
+  sensitiveLabel: string,
+  sourceApplication?: SourceApplication,
+): Clip {
+  const summary = createSensitiveClipSummary(sensitiveLabel);
+
+  return {
+    id: createId(),
+    body: summary.body,
+    title: summary.title,
+    vault: "Editor",
+    type: "Text",
+    risk: "destructive",
+    riskLabel: summary.label,
+    description: summary.description,
+    whenToUse: summary.whenToUse,
+    before: summary.before,
+    createdAt: new Date().toISOString(),
+    useCount: 0,
+    charCount: summary.body.length,
+    lineCount: countLines(summary.body),
+    tokenEstimate: estimateTokens(summary.body),
     isDemo: false,
     sourceAppName: sourceApplication?.name ?? "",
     sourceAppBundleId: sourceApplication?.bundleId ?? "",
@@ -2217,8 +2250,17 @@ function App() {
 
         const sensitiveMatch = detectSensitiveClip(text);
         if (sensitiveMatch) {
+          const blockedClip = createBlockedSensitiveClip(
+            sensitiveMatch,
+            sourceApplication,
+          );
+          await insertClip(blockedClip);
+          setResultTotal((current) => current + 1);
+          setClips((current) =>
+            [blockedClip, ...current].slice(0, visibleClipCount),
+          );
           setStatus(
-            `Sensitive clipboard content was not saved: ${sensitiveMatch}.`,
+            `Sensitive clipboard body was blocked. Saved risk note: ${sensitiveMatch}.`,
           );
           return;
         }
