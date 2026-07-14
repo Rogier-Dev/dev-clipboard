@@ -2395,10 +2395,10 @@ function App() {
 
     try {
       clearPendingRiskCopy();
+      setCopiedClipId(clip.id);
       await writeText(copyValue);
       lastWrittenRef.current = copyValue.trim();
       lastSeenRef.current = copyValue.trim();
-      setCopiedClipId(clip.id);
       setStatus(
         previewType(clip) === "color"
           ? `Copied ${colorFormatLabel(colorFormat)}: ${copyValue}`
@@ -2419,6 +2419,7 @@ function App() {
       await updateClipUse(clip);
       return true;
     } catch (error) {
+      setCopiedClipId(null);
       setStatus(`Clipboard write failed: ${String(error)}`);
       return false;
     }

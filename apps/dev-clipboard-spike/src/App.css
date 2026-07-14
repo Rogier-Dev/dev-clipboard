@@ -62,6 +62,18 @@ input {
 
 button {
     cursor: pointer;
+    transition:
+        background-color 90ms ease,
+        border-color 90ms ease,
+        color 90ms ease,
+        box-shadow 90ms ease,
+        transform 70ms ease,
+        opacity 90ms ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+button:active {
+    transform: scale(0.97);
 }
 
 .shell {
