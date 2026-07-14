@@ -9,6 +9,7 @@ This app is a spike, not the final MVP. It validates the core loop for the produ
 Validated in this spike:
 
 - Tauri 2 app shell with React + TypeScript UI.
+- Single-instance app behavior: repeat launches focus the existing panel instead of opening duplicate panels.
 - macOS clipboard text read/write via `@tauri-apps/plugin-clipboard-manager`.
 - Global panel shortcut: `⌘ ⌥ V`.
 - Local SQLite storage via `@tauri-apps/plugin-sql`.
@@ -20,6 +21,7 @@ Validated in this spike:
 - Simple Terminal command risk labeling.
 - Search hit source display such as `Matched in Body`, `Matched in Before`, or `Matched in Dev metadata`.
 - Copy-back flow: review a saved clip, copy it back to the system clipboard, then paste manually with `Command+V`.
+- Risk copy confirmation: `Risk` clips require a second click within 5 seconds before they are written back to the system clipboard.
 - Internal copy guard: clipboard changes while Dev Clipboard is focused are not saved as new clips.
 - Best-effort macOS source attribution using the frontmost app name and bundle ID, without Accessibility permission.
 - Bundle-ID based ignored-app settings checked before a clip is stored.
@@ -46,6 +48,8 @@ Every demo row has a visible `[Demo]` title prefix and an internal SQLite `is_de
 The MVP policy is to block obvious secrets before SQLite persistence. Private keys, GitHub tokens, AWS access keys, common API keys, and `.env`-style password/token assignments are skipped with a visible status message.
 
 This is a local heuristic, not a complete data-loss prevention system. Ambiguous text is still captured so users can keep normal development snippets.
+
+`Review` clips are not auto-deleted. They are kept because the product goal is to let users read the explanation and learn why a snippet needs review before use. For `Risk` clips, the current safety friction is copy confirmation rather than automatic clipboard clearing.
 
 ## Stack
 

@@ -1191,6 +1191,9 @@ function App() {
   const [dbReady, setDbReady] = useState(false);
   const [windowFocused, setWindowFocused] = useState(false);
   const [copiedClipId, setCopiedClipId] = useState<string | null>(null);
+  const [pendingRiskCopyId, setPendingRiskCopyId] = useState<string | null>(
+    null,
+  );
   const [colorFormatsByClip, setColorFormatsByClip] = useState<
     Record<string, ColorFormat>
   >({});
@@ -1240,6 +1243,7 @@ function App() {
   );
   const lastSeenRef = useRef<string>("");
   const lastWrittenRef = useRef<string>("");
+  const pendingRiskCopyTimeoutRef = useRef<number | null>(null);
   const queryRef = useRef<string>("");
   const ignoredAppsRef = useRef<string[]>(ignoredApps);
   const windowFocusedRef = useRef(false);
@@ -1263,6 +1267,14 @@ function App() {
       JSON.stringify(ignoredApps),
     );
   }, [ignoredApps]);
+
+  useEffect(() => {
+    return () => {
+      if (pendingRiskCopyTimeoutRef.current !== null) {
+        window.clearTimeout(pendingRiskCopyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   function addIgnoredApp() {
     const bundleId = ignoredAppInput.trim().toLowerCase();
@@ -2349,7 +2361,32 @@ function App() {
       document.removeEventListener("keydown", handleClipTextShortcut, true);
   }, [editingClipTextId, editingClipTextValue]);
 
+  function clearPendingRiskCopy() {
+    if (pendingRiskCopyTimeoutRef.current !== null) {
+      window.clearTimeout(pendingRiskCopyTimeoutRef.current);
+      pendingRiskCopyTimeoutRef.current = null;
+    }
+    setPendingRiskCopyId(null);
+  }
+
+  function requestRiskCopyConfirmation(clip: Clip) {
+    if (pendingRiskCopyTimeoutRef.current !== null) {
+      window.clearTimeout(pendingRiskCopyTimeoutRef.current);
+    }
+    setPendingRiskCopyId(clip.id);
+    setStatus(`Review risk before copying: ${clip.title}`);
+    pendingRiskCopyTimeoutRef.current = window.setTimeout(() => {
+      setPendingRiskCopyId(null);
+      pendingRiskCopyTimeoutRef.current = null;
+    }, 5000);
+  }
+
   async function copyClip(clip: Clip) {
+    if (clip.risk === "destructive" && pendingRiskCopyId !== clip.id) {
+      requestRiskCopyConfirmation(clip);
+      return false;
+    }
+
     const colorFormat = colorFormatsByClip[clip.id] ?? "hex";
     const copyValue =
       previewType(clip) === "color"
@@ -2357,6 +2394,7 @@ function App() {
         : clip.body;
 
     try {
+      clearPendingRiskCopy();
       await writeText(copyValue);
       lastWrittenRef.current = copyValue.trim();
       lastSeenRef.current = copyValue.trim();
@@ -2379,8 +2417,10 @@ function App() {
         ),
       );
       await updateClipUse(clip);
+      return true;
     } catch (error) {
       setStatus(`Clipboard write failed: ${String(error)}`);
+      return false;
     }
   }
 
@@ -3663,21 +3703,29 @@ function App() {
                     </div>
                     <div className="clipActions">
                       <button
-                        className={
-                          copiedClipId === clip.id
-                            ? "copyButton copied"
-                            : "copyButton"
-                        }
+                        className={[
+                          "copyButton",
+                          copiedClipId === clip.id ? "copied" : "",
+                          pendingRiskCopyId === clip.id
+                            ? "confirmingRiskCopy"
+                            : "",
+                        ]
+                          .filter(Boolean)
+                          .join(" ")}
                         onClick={() => copyClip(clip)}
                         type="button"
                       >
                         {copiedClipId === clip.id ? (
                           <Check size={16} />
+                        ) : pendingRiskCopyId === clip.id ? (
+                          <TriangleAlert size={16} />
                         ) : (
                           <Copy size={16} />
                         )}
                         {copiedClipId === clip.id ? (
                           <span>Copied</span>
+                        ) : pendingRiskCopyId === clip.id ? (
+                          <span>Confirm</span>
                         ) : clip.risk === "destructive" ? (
                           <span>Risk</span>
                         ) : clip.risk === "check" ? (

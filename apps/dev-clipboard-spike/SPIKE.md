@@ -73,6 +73,7 @@ Completed:
 - Real clipboard monitoring was confirmed with `rm -rf dist`.
 - The copied command appeared in the app history.
 - Copy-back from the app was confirmed by pressing `Review` and pasting `rm -rf dist` into another app with Command+V.
+- `Risk` copy-back now requires a second click within 5 seconds, so destructive or sensitive-looking clips are not returned to the system clipboard by a single accidental click.
 - SQLite storage is wired into the running spike.
 - New copied text is captured into SQLite and appears as cards.
 - A persistent `Store: SQLite` badge was added because the initial `SQLite ready...` status is quickly replaced by later capture status.

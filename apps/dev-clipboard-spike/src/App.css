@@ -1662,6 +1662,13 @@ button {
     background: var(--risk-danger-bg);
 }
 
+.risk-destructive .copyButton.confirmingRiskCopy {
+    min-width: 104px;
+    outline: 2px solid var(--risk-danger-bg-active);
+    outline-offset: 2px;
+    background: var(--risk-danger-bg-active);
+}
+
 .copyButton.copied,
 .risk-check .copyButton.copied,
 .risk-destructive .copyButton.copied {
