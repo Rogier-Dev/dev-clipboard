@@ -1645,8 +1645,9 @@ function App() {
       throw new Error("Clip body already exists in SQLite");
     }
 
-    await db.execute(
-      `INSERT OR IGNORE INTO clips (
+    await runTransaction(db, async () => {
+      await db.execute(
+        `INSERT OR IGNORE INTO clips (
         id,
         body,
         title,
@@ -1667,45 +1668,30 @@ function App() {
         source_app_name,
         source_app_bundle_id
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
-      [
-        clip.id,
-        clip.body,
-        clip.title,
-        clip.vault,
-        clip.type,
-        clip.risk,
-        clip.riskLabel,
-        clip.description,
-        clip.whenToUse,
-        clip.before,
-        clip.createdAt,
-        clip.lastUsedAt ?? null,
-        clip.useCount,
-        clip.charCount,
-        clip.lineCount,
-        clip.tokenEstimate,
-        clip.isDemo ? 1 : 0,
-        clip.sourceAppName,
-        clip.sourceAppBundleId,
-      ],
-    );
-
-    await db.execute(
-      `INSERT OR REPLACE INTO clip_search
-        (id, body, title, vault, type, risk_label, description, when_to_use, before)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [
-        clip.id,
-        buildDevSearchText(clip),
-        clip.title,
-        clip.vault,
-        clip.type,
-        clip.riskLabel,
-        clip.description,
-        clip.whenToUse,
-        clip.before,
-      ],
-    );
+        [
+          clip.id,
+          clip.body,
+          clip.title,
+          clip.vault,
+          clip.type,
+          clip.risk,
+          clip.riskLabel,
+          clip.description,
+          clip.whenToUse,
+          clip.before,
+          clip.createdAt,
+          clip.lastUsedAt ?? null,
+          clip.useCount,
+          clip.charCount,
+          clip.lineCount,
+          clip.tokenEstimate,
+          clip.isDemo ? 1 : 0,
+          clip.sourceAppName,
+          clip.sourceAppBundleId,
+        ],
+      );
+      await upsertSearchIndex(clip, db);
+    });
 
     const rows = await db.select<Array<{ count: number }>>(
       "SELECT COUNT(*) as count FROM clips",
@@ -1728,6 +1714,25 @@ function App() {
        WHERE id = $2`,
       [new Date().toISOString(), clip.id],
     );
+  }
+
+  async function runTransaction<T>(
+    db: Database,
+    work: () => Promise<T>,
+  ): Promise<T> {
+    await db.execute("BEGIN IMMEDIATE");
+    try {
+      const result = await work();
+      await db.execute("COMMIT");
+      return result;
+    } catch (error) {
+      try {
+        await db.execute("ROLLBACK");
+      } catch {
+        // Preserve the original database error.
+      }
+      throw error;
+    }
   }
 
   async function upsertSearchIndex(clip: Clip, db = dbRef.current) {
@@ -1759,10 +1764,12 @@ function App() {
       throw new Error("SQLite database is not ready");
     }
 
-    await db.execute("DELETE FROM clip_search");
-    for (const clip of clipsToIndex) {
-      await upsertSearchIndex(clip, db);
-    }
+    await runTransaction(db, async () => {
+      await db.execute("DELETE FROM clip_search");
+      for (const clip of clipsToIndex) {
+        await upsertSearchIndex(clip, db);
+      }
+    });
   }
 
   async function addDevelopmentDemoClips(db = dbRef.current) {
@@ -1770,9 +1777,10 @@ function App() {
       throw new Error("SQLite database is not ready");
     }
 
-    for (const clip of DEMO_HEAVY_CLIPS) {
-      await db.execute(
-        `INSERT OR IGNORE INTO clips (
+    await runTransaction(db, async () => {
+      for (const clip of DEMO_HEAVY_CLIPS) {
+        await db.execute(
+          `INSERT OR IGNORE INTO clips (
             id,
             body,
             title,
@@ -1791,28 +1799,28 @@ function App() {
             token_estimate,
             is_demo
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
-        [
-          clip.id,
-          clip.body,
-          clip.title,
-          clip.vault,
-          clip.type,
-          clip.risk,
-          clip.riskLabel,
-          clip.description,
-          clip.whenToUse,
-          clip.before,
-          clip.createdAt,
-          clip.lastUsedAt ?? null,
-          clip.useCount,
-          clip.charCount,
-          clip.lineCount,
-          clip.tokenEstimate,
-          1,
-        ],
-      );
-      await db.execute(
-        `UPDATE clips
+          [
+            clip.id,
+            clip.body,
+            clip.title,
+            clip.vault,
+            clip.type,
+            clip.risk,
+            clip.riskLabel,
+            clip.description,
+            clip.whenToUse,
+            clip.before,
+            clip.createdAt,
+            clip.lastUsedAt ?? null,
+            clip.useCount,
+            clip.charCount,
+            clip.lineCount,
+            clip.tokenEstimate,
+            1,
+          ],
+        );
+        await db.execute(
+          `UPDATE clips
          SET body = $1,
              title = $2,
              vault = $3,
@@ -1824,21 +1832,22 @@ function App() {
              token_estimate = $9,
              is_demo = 1
          WHERE id = $10`,
-        [
-          clip.body,
-          clip.title,
-          clip.vault,
-          clip.type,
-          clip.risk,
-          clip.riskLabel,
-          clip.charCount,
-          clip.lineCount,
-          clip.tokenEstimate,
-          clip.id,
-        ],
-      );
-      await upsertSearchIndex(clip, db);
-    }
+          [
+            clip.body,
+            clip.title,
+            clip.vault,
+            clip.type,
+            clip.risk,
+            clip.riskLabel,
+            clip.charCount,
+            clip.lineCount,
+            clip.tokenEstimate,
+            clip.id,
+          ],
+        );
+        await upsertSearchIndex(clip, db);
+      }
+    });
 
     await loadRecentClips(selectedVault, selectedSearchFilters);
     setStatus(`Added ${DEMO_HEAVY_CLIPS.length} development demo clips.`);
@@ -1849,10 +1858,12 @@ function App() {
       throw new Error("SQLite database is not ready");
     }
 
-    await db.execute(
-      "DELETE FROM clip_search WHERE id IN (SELECT id FROM clips WHERE is_demo = 1)",
-    );
-    const result = await db.execute("DELETE FROM clips WHERE is_demo = 1");
+    const result = await runTransaction(db, async () => {
+      await db.execute(
+        "DELETE FROM clip_search WHERE id IN (SELECT id FROM clips WHERE is_demo = 1)",
+      );
+      return db.execute("DELETE FROM clips WHERE is_demo = 1");
+    });
     await loadRecentClips(selectedVault, selectedSearchFilters);
     setStatus(`Removed ${result.rowsAffected} development demo clips.`);
   }
@@ -1871,11 +1882,13 @@ function App() {
     };
     const column = NOTE_FIELDS[field].dbColumn;
 
-    await db.execute(`UPDATE clips SET ${column} = $1 WHERE id = $2`, [
-      value,
-      clip.id,
-    ]);
-    await upsertSearchIndex(updatedClip, db);
+    await runTransaction(db, async () => {
+      await db.execute(`UPDATE clips SET ${column} = $1 WHERE id = $2`, [
+        value,
+        clip.id,
+      ]);
+      await upsertSearchIndex(updatedClip, db);
+    });
 
     setClips((current) =>
       current.map((item) => (item.id === clip.id ? updatedClip : item)),
@@ -1917,8 +1930,9 @@ function App() {
       matchReason: undefined,
     };
 
-    await db.execute(
-      `UPDATE clips
+    await runTransaction(db, async () => {
+      await db.execute(
+        `UPDATE clips
        SET body = $1,
            title = $2,
            vault = $3,
@@ -1930,21 +1944,22 @@ function App() {
            line_count = $9,
            token_estimate = $10
        WHERE id = $11`,
-      [
-        updatedClip.body,
-        updatedClip.title,
-        updatedClip.vault,
-        updatedClip.type,
-        updatedClip.risk,
-        updatedClip.riskLabel,
-        updatedClip.before,
-        updatedClip.charCount,
-        updatedClip.lineCount,
-        updatedClip.tokenEstimate,
-        updatedClip.id,
-      ],
-    );
-    await upsertSearchIndex(updatedClip, db);
+        [
+          updatedClip.body,
+          updatedClip.title,
+          updatedClip.vault,
+          updatedClip.type,
+          updatedClip.risk,
+          updatedClip.riskLabel,
+          updatedClip.before,
+          updatedClip.charCount,
+          updatedClip.lineCount,
+          updatedClip.tokenEstimate,
+          updatedClip.id,
+        ],
+      );
+      await upsertSearchIndex(updatedClip, db);
+    });
 
     setClips((current) =>
       current.map((item) => (item.id === clip.id ? updatedClip : item)),
@@ -1970,11 +1985,13 @@ function App() {
       matchReason: undefined,
     };
 
-    await db.execute("UPDATE clips SET title = $1 WHERE id = $2", [
-      title,
-      clip.id,
-    ]);
-    await upsertSearchIndex(updatedClip, db);
+    await runTransaction(db, async () => {
+      await db.execute("UPDATE clips SET title = $1 WHERE id = $2", [
+        title,
+        clip.id,
+      ]);
+      await upsertSearchIndex(updatedClip, db);
+    });
 
     setClips((current) =>
       current.map((item) => (item.id === clip.id ? updatedClip : item)),
@@ -2343,8 +2360,10 @@ function App() {
     }
 
     try {
-      await db.execute("DELETE FROM clip_search WHERE id = $1", [clip.id]);
-      await db.execute("DELETE FROM clips WHERE id = $1", [clip.id]);
+      await runTransaction(db, async () => {
+        await db.execute("DELETE FROM clip_search WHERE id = $1", [clip.id]);
+        await db.execute("DELETE FROM clips WHERE id = $1", [clip.id]);
+      });
       setClips((current) => current.filter((item) => item.id !== clip.id));
       setLastDeletedClip(clip);
       setClipContextMenu(null);
@@ -2376,10 +2395,10 @@ function App() {
 
     setHistoryDeleting(true);
     try {
-      // Search always joins clips, so deleting primary rows first prevents
-      // stale FTS rows from appearing if index cleanup fails afterward.
-      await db.execute("DELETE FROM clips");
-      await db.execute("DELETE FROM clip_search");
+      await runTransaction(db, async () => {
+        await db.execute("DELETE FROM clip_search");
+        await db.execute("DELETE FROM clips");
+      });
       setClips([]);
       setLastDeletedClip(null);
       setQuery("");
