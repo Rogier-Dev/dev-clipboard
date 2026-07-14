@@ -32,6 +32,12 @@ Intentionally not included in this spike:
 - Rich image/data editing.
 - Final production settings, onboarding, packaging, or app icon polish.
 
+## Development Demo Clips
+
+Demo clips are not inserted automatically. In a development build, open Settings and use `Add demo clips` when UI coverage for Safe, Review, Risk, color, URL, or heavier preview cards is needed.
+
+Every demo row has a visible `[Demo]` title prefix and an internal SQLite `is_demo` flag. `Remove demo clips only` deletes only flagged demo rows and leaves copied user history unchanged. These controls are not rendered in production builds.
+
 ## Stack
 
 - Tauri 2

@@ -173,6 +173,22 @@ pub fn run() {
         "#,
             kind: tauri_plugin_sql::MigrationKind::Up,
         },
+        tauri_plugin_sql::Migration {
+            version: 3,
+            description: "mark_development_demo_clips",
+            sql: r#"
+            ALTER TABLE clips ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0;
+
+            UPDATE clips
+            SET is_demo = 1,
+                title = CASE
+                    WHEN title LIKE '[Demo] %' THEN title
+                    ELSE '[Demo] ' || title
+                END
+            WHERE id LIKE 'demo-%';
+        "#,
+            kind: tauri_plugin_sql::MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

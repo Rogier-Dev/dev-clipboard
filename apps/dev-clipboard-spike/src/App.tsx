@@ -89,6 +89,7 @@ type Clip = {
   charCount: number;
   lineCount: number;
   tokenEstimate: number;
+  isDemo: boolean;
   matchField?: string;
   matchReason?: string;
 };
@@ -205,7 +206,7 @@ function readStoredCardSize(): CardSize {
   return stored === "compact" || stored === "large" ? stored : "normal";
 }
 
-const DEMO_HEAVY_CLIPS: Clip[] = [
+const DEMO_HEAVY_CLIPS: Clip[] = ([
   {
     id: "demo-review-command-20260701",
     title: "Check dependencies before install",
@@ -454,7 +455,11 @@ Mock image clip for checking data-size tags and future crop/cleanup behavior.`,
     lineCount: 5,
     tokenEstimate: 80,
   },
-];
+] as Array<Omit<Clip, "isDemo">>).map((clip) => ({
+  ...clip,
+  title: clip.title.startsWith("[Demo] ") ? clip.title : `[Demo] ${clip.title}`,
+  isDemo: true,
+}));
 
 const DEV_SEARCH_SYNONYMS: Array<[RegExp, string]> = [
   [
@@ -633,6 +638,7 @@ function createClip(text: string): Clip {
     charCount: text.length,
     lineCount: countLines(text),
     tokenEstimate: estimateTokens(text),
+    isDemo: false,
   };
 }
 
@@ -1535,7 +1541,6 @@ function App() {
       try {
         const db = await Database.load(DB_PATH);
         dbRef.current = db;
-        await ensureDemoHeavyClips(db);
         const rows = await db.select<Clip[]>(
           `SELECT
             id,
@@ -1553,7 +1558,8 @@ function App() {
             use_count as useCount,
             char_count as charCount,
             line_count as lineCount,
-            token_estimate as tokenEstimate
+            token_estimate as tokenEstimate,
+            is_demo as isDemo
           FROM clips
           ORDER BY created_at DESC
           LIMIT 50`,
@@ -1609,8 +1615,9 @@ function App() {
         use_count,
         char_count,
         line_count,
-        token_estimate
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+        token_estimate,
+        is_demo
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
       [
         clip.id,
         clip.body,
@@ -1628,6 +1635,7 @@ function App() {
         clip.charCount,
         clip.lineCount,
         clip.tokenEstimate,
+        clip.isDemo ? 1 : 0,
       ],
     );
 
@@ -1706,7 +1714,7 @@ function App() {
     }
   }
 
-  async function ensureDemoHeavyClips(db = dbRef.current) {
+  async function addDevelopmentDemoClips(db = dbRef.current) {
     if (!db) {
       throw new Error("SQLite database is not ready");
     }
@@ -1729,8 +1737,9 @@ function App() {
             use_count,
             char_count,
             line_count,
-            token_estimate
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+            token_estimate,
+            is_demo
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
         [
           clip.id,
           clip.body,
@@ -1748,6 +1757,7 @@ function App() {
           clip.charCount,
           clip.lineCount,
           clip.tokenEstimate,
+          1,
         ],
       );
       await db.execute(
@@ -1760,7 +1770,8 @@ function App() {
              risk_label = $6,
              char_count = $7,
              line_count = $8,
-             token_estimate = $9
+             token_estimate = $9,
+             is_demo = 1
          WHERE id = $10`,
         [
           clip.body,
@@ -1777,6 +1788,22 @@ function App() {
       );
       await upsertSearchIndex(clip, db);
     }
+
+    await loadRecentClips(selectedVault, selectedSearchFilters);
+    setStatus(`Added ${DEMO_HEAVY_CLIPS.length} development demo clips.`);
+  }
+
+  async function removeDevelopmentDemoClips(db = dbRef.current) {
+    if (!db) {
+      throw new Error("SQLite database is not ready");
+    }
+
+    await db.execute(
+      "DELETE FROM clip_search WHERE id IN (SELECT id FROM clips WHERE is_demo = 1)",
+    );
+    const result = await db.execute("DELETE FROM clips WHERE is_demo = 1");
+    await loadRecentClips(selectedVault, selectedSearchFilters);
+    setStatus(`Removed ${result.rowsAffected} development demo clips.`);
   }
 
   async function updateClipNote(clip: Clip, field: NoteField, value: string) {
@@ -1926,7 +1953,8 @@ function App() {
         use_count as useCount,
         char_count as charCount,
         line_count as lineCount,
-        token_estimate as tokenEstimate
+        token_estimate as tokenEstimate,
+        is_demo as isDemo
       FROM clips
       ${vaultClause}
       ORDER BY created_at DESC
@@ -1997,7 +2025,8 @@ function App() {
         clips.use_count as useCount,
         clips.char_count as charCount,
         clips.line_count as lineCount,
-        clips.token_estimate as tokenEstimate
+        clips.token_estimate as tokenEstimate,
+        clips.is_demo as isDemo
       FROM clip_search
       JOIN clips ON clips.id = clip_search.id
       WHERE clip_search MATCH $1
@@ -4272,6 +4301,44 @@ function App() {
                     <span>Rich content editing</span>
                   </div>
                 </section>
+
+                {import.meta.env.DEV && (
+                  <section className="settingsSection spanTwo developerTools">
+                    <div className="developerToolsHeading">
+                      <div>
+                        <h3>Development data</h3>
+                        <p>
+                          Demo clips are never added automatically. Added clips
+                          use a [Demo] title and an internal demo flag.
+                        </p>
+                      </div>
+                      <span className="futurePill">Development only</span>
+                    </div>
+                    <div className="demoActions">
+                      <button
+                        onClick={() => {
+                          addDevelopmentDemoClips().catch((error) =>
+                            setStatus(`Demo insert failed: ${String(error)}`),
+                          );
+                        }}
+                        type="button"
+                      >
+                        Add demo clips
+                      </button>
+                      <button
+                        className="danger"
+                        onClick={() => {
+                          removeDevelopmentDemoClips().catch((error) =>
+                            setStatus(`Demo removal failed: ${String(error)}`),
+                          );
+                        }}
+                        type="button"
+                      >
+                        Remove demo clips only
+                      </button>
+                    </div>
+                  </section>
+                )}
               </div>
             </section>
           </div>

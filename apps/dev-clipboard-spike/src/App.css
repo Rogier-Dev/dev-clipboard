@@ -2904,6 +2904,51 @@ button {
     font-weight: 800;
 }
 
+.developerToolsHeading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.developerToolsHeading p {
+    max-width: 560px;
+    margin: 6px 0 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.demoActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.demoActions button {
+    min-height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--border-default);
+    border-radius: 10px;
+    color: var(--text-primary);
+    background: var(--surface-control);
+    cursor: pointer;
+}
+
+.demoActions button:hover {
+    background: var(--surface-raised);
+}
+
+.demoActions button:focus-visible {
+    outline: 2px solid var(--field-focus-border);
+    outline-offset: 2px;
+}
+
+.demoActions button.danger {
+    color: var(--risk-danger-bg-active);
+}
+
 .segmented {
     display: inline-flex;
     align-items: center;

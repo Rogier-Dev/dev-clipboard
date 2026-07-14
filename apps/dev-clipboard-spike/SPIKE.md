@@ -93,6 +93,9 @@ Completed:
 - `Description` and `When to use` use the same inline edit/save/cancel pattern as `Before`.
 - SQLite stores `description` and `when_to_use` directly on each clip for the spike.
 - FTS search indexes body, title, risk, `Description`, `When to use`, `Before`, and Dev metadata.
+- Development demo clips are no longer inserted at startup.
+- Development builds expose explicit `Add demo clips` and `Remove demo clips only` actions in Settings.
+- Demo rows use both a visible `[Demo]` title prefix and an SQLite `is_demo` flag. Existing fixed `demo-` IDs are migrated without changing real clipboard history rows.
 
 ## Known Gaps / Pending Decisions
 
@@ -113,8 +116,8 @@ See `MVP_CHECKLIST.md` for the current MVP scope mapped to implemented, partial,
 
 The detailed order and completion criteria now live in `MVP_CHECKLIST.md`. The next implementation slice is:
 
-1. Stop production insertion of demo-heavy clips.
-2. Implement confirmed bulk history deletion and keep SQLite/FTS changes consistent.
+1. Implement confirmed bulk history deletion and keep SQLite/FTS changes consistent.
+2. Decide and document the minimum protection for secrets and sensitive clipboard text.
 3. Decide whether real source-app detection and ignored apps are MVP requirements.
 4. Replace remaining placeholder settings with working controls or explicit `Future` states.
 5. Extract classification and risk rules into testable modules and add regression tests.
