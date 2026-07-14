@@ -1279,6 +1279,31 @@ button:active {
     margin: 0;
 }
 
+.loadMoreButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 8px 12px;
+    color: var(--control-text);
+    background: var(--surface-control);
+    font-size: 13px;
+}
+
+.loadMoreButton:hover {
+    color: var(--control-hover-text);
+    border-color: var(--accent-border);
+    background: var(--control-hover-bg);
+}
+
+.loadMoreButton span {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
 .clip {
     padding: 16px;
     transition:

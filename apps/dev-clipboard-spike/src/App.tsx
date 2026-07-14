@@ -1087,9 +1087,14 @@ function extraMetaTags(clip: Clip) {
 }
 
 const PANEL_SHORTCUT_LABEL = "⌘ ⌥ V";
+const CLIP_PAGE_SIZE = 50;
+const CLIP_QUERY_LIMIT = 500;
 
 function App() {
   const [clips, setClips] = useState<Clip[]>([]);
+  const [visibleClipCount, setVisibleClipCount] = useState(CLIP_PAGE_SIZE);
+  const [resultTotal, setResultTotal] = useState(0);
+  const [totalClipCount, setTotalClipCount] = useState(0);
   const [status, setStatus] = useState("Opening local SQLite store");
   const [shortcutStatus] = useState(`Shortcut ready: ${PANEL_SHORTCUT_LABEL}`);
   const [query, setQuery] = useState("");
@@ -1609,12 +1614,19 @@ function App() {
             source_app_bundle_id as sourceAppBundleId
           FROM clips
           ORDER BY created_at DESC
-          LIMIT 50`,
+          LIMIT ${CLIP_PAGE_SIZE}`,
         );
 
         if (!disposed) {
+          const countRows = await db.select<Array<{ count: number }>>(
+            "SELECT COUNT(*) as count FROM clips",
+          );
+          const totalCount = countRows[0]?.count ?? rows.length;
+
           await reindexSearch(rows, db);
           setClips(rows);
+          setResultTotal(rows.length);
+          setTotalClipCount(totalCount);
           setDbReady(true);
           setStatus(`SQLite ready. Loaded ${rows.length} clips.`);
         }
@@ -1700,6 +1712,7 @@ function App() {
     if (count < 1) {
       throw new Error("SQLite insert did not persist a row");
     }
+    setTotalClipCount(count);
   }
 
   async function updateClipUse(clip: Clip) {
@@ -1714,6 +1727,19 @@ function App() {
        WHERE id = $2`,
       [new Date().toISOString(), clip.id],
     );
+  }
+
+  async function refreshTotalClipCount(db = dbRef.current) {
+    if (!db) {
+      throw new Error("SQLite database is not ready");
+    }
+
+    const rows = await db.select<Array<{ count: number }>>(
+      "SELECT COUNT(*) as count FROM clips",
+    );
+    const count = rows[0]?.count ?? 0;
+    setTotalClipCount(count);
+    return count;
   }
 
   async function runTransaction<T>(
@@ -1850,6 +1876,7 @@ function App() {
     });
 
     await loadRecentClips(selectedVault, selectedSearchFilters);
+    await refreshTotalClipCount(db);
     setStatus(`Added ${DEMO_HEAVY_CLIPS.length} development demo clips.`);
   }
 
@@ -1865,6 +1892,7 @@ function App() {
       return db.execute("DELETE FROM clips WHERE is_demo = 1");
     });
     await loadRecentClips(selectedVault, selectedSearchFilters);
+    await refreshTotalClipCount(db);
     setStatus(`Removed ${result.rowsAffected} development demo clips.`);
   }
 
@@ -2032,15 +2060,16 @@ function App() {
       FROM clips
       ${vaultClause}
       ORDER BY created_at DESC
-      LIMIT 100`,
+      LIMIT ${CLIP_QUERY_LIMIT}`,
       bindValues,
     );
     const filteredRows = rows.filter((clip) =>
       matchesSearchFilters(clip, filters),
     );
 
+    setResultTotal(filteredRows.length);
     setClips(
-      filteredRows.slice(0, 50).map((clip) => ({
+      filteredRows.slice(0, visibleClipCount).map((clip) => ({
         ...clip,
         matchField: filters.length > 0 ? "Tags" : undefined,
         matchReason:
@@ -2108,15 +2137,16 @@ function App() {
       WHERE clip_search MATCH $1
       ${vaultClause}
       ORDER BY rank
-      LIMIT 50`,
+      LIMIT ${CLIP_QUERY_LIMIT}`,
       bindValues,
     );
     const filteredRows = rows.filter((clip) =>
       matchesSearchFilters(clip, filters),
     );
 
+    setResultTotal(filteredRows.length);
     setClips(
-      filteredRows.map((clip) => ({
+      filteredRows.slice(0, visibleClipCount).map((clip) => ({
         ...clip,
         matchField: detectMatchField(clip, q) ?? "Dev metadata",
         matchReason: detectMatchReason(clip, q),
@@ -2204,7 +2234,10 @@ function App() {
 
         const clipToSave = createClip(text, sourceApplication);
         await insertClip(clipToSave);
-        setClips((current) => [clipToSave, ...current].slice(0, 50));
+        setResultTotal((current) => current + 1);
+        setClips((current) =>
+          [clipToSave, ...current].slice(0, visibleClipCount),
+        );
         setStatus("Captured clipboard text into SQLite");
       } catch (error) {
         setStatus(`Clipboard read failed: ${String(error)}`);
@@ -2223,6 +2256,12 @@ function App() {
   useEffect(() => {
     if (!dbReady) return;
 
+    setVisibleClipCount(CLIP_PAGE_SIZE);
+  }, [dbReady, query, selectedVault, selectedSearchFilters]);
+
+  useEffect(() => {
+    if (!dbReady) return;
+
     const id = window.setTimeout(() => {
       searchClips(query, selectedVault, selectedSearchFilters).catch(
         (error) => {
@@ -2232,7 +2271,7 @@ function App() {
     }, 180);
 
     return () => window.clearTimeout(id);
-  }, [dbReady, query, selectedVault, selectedSearchFilters]);
+  }, [dbReady, query, selectedVault, selectedSearchFilters, visibleClipCount]);
 
   useEffect(() => {
     if (!editingTitleId) return;
@@ -2365,6 +2404,8 @@ function App() {
         await db.execute("DELETE FROM clips WHERE id = $1", [clip.id]);
       });
       setClips((current) => current.filter((item) => item.id !== clip.id));
+      setResultTotal((current) => Math.max(0, current - 1));
+      setTotalClipCount((current) => Math.max(0, current - 1));
       setLastDeletedClip(clip);
       setClipContextMenu(null);
       setStatus(`Deleted clip: ${clip.title}. Press Command+Z to undo.`);
@@ -2400,6 +2441,8 @@ function App() {
         await db.execute("DELETE FROM clips");
       });
       setClips([]);
+      setResultTotal(0);
+      setTotalClipCount(0);
       setLastDeletedClip(null);
       setQuery("");
       setSelectedSearchFilters([]);
@@ -2448,6 +2491,10 @@ function App() {
 
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
+  }
+
+  function loadMoreClips() {
+    setVisibleClipCount((current) => current + CLIP_PAGE_SIZE);
   }
 
   function knownSourceApplications() {
@@ -3489,22 +3536,23 @@ function App() {
                 )}
               </article>
             ) : (
-              sortedClips().map((clip) => (
-                <article
-                  className={[
-                    "clip",
-                    `card-${cardSize}`,
-                    `sort-${sortMode}`,
-                    `risk-${clip.risk}`,
-                    cardSize === "compact" && isMediaPreviewClip(clip)
-                      ? "compact-media"
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  key={clip.id}
-                  onContextMenu={(event) => openClipContextMenu(event, clip)}
-                >
+              <>
+                {sortedClips().map((clip) => (
+                  <article
+                    className={[
+                      "clip",
+                      `card-${cardSize}`,
+                      `sort-${sortMode}`,
+                      `risk-${clip.risk}`,
+                      cardSize === "compact" && isMediaPreviewClip(clip)
+                        ? "compact-media"
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    key={clip.id}
+                    onContextMenu={(event) => openClipContextMenu(event, clip)}
+                  >
                   <div className="clipHeader">
                     <div>
                       <div className="meta">
@@ -3837,8 +3885,21 @@ function App() {
                         )}
                       </>
                     )}
-                </article>
-              ))
+                  </article>
+                ))}
+                {clips.length < resultTotal && (
+                  <button
+                    className="loadMoreButton"
+                    onClick={loadMoreClips}
+                    type="button"
+                  >
+                    Load more
+                    <span>
+                      Showing {clips.length} of {resultTotal}
+                    </span>
+                  </button>
+                )}
+              </>
             )}
           </div>
         </section>
@@ -4617,8 +4678,8 @@ function App() {
                   <div>
                     <h3 id="history-delete-title">Delete all history?</h3>
                     <p>
-                      This permanently deletes {clips.length} saved clip
-                      {clips.length === 1 ? "" : "s"} from this Mac. This
+                      This permanently deletes {totalClipCount} saved clip
+                      {totalClipCount === 1 ? "" : "s"} from this Mac. This
                       action cannot be undone.
                     </p>
                   </div>
@@ -4632,7 +4693,7 @@ function App() {
                     </button>
                     <button
                       className="confirmDelete"
-                      disabled={historyDeleting || clips.length === 0}
+                      disabled={historyDeleting || totalClipCount === 0}
                       onClick={deleteAllHistory}
                       type="button"
                     >
