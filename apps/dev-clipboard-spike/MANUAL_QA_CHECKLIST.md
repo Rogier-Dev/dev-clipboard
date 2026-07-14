@@ -30,15 +30,15 @@ Status:
 | --- | --- | --- | --- | --- |
 | [ ] | Build | `npm run build:quiet` | TypeScriptとVite buildが成功する | |
 | [ ] | Tests | `npm run test:core` | Risk、分類、タイトル、検索メタ情報テストが成功する | |
-| [ ] | Launch | `npm run tauri dev` | Dev Clipboardが1つだけ起動する | |
-| [ ] | Shortcut | `Command+Option+V` | パネルが表示/退避する | |
-| [ ] | Single instance | 起動中に再度起動する | 既存パネルが前面に出て、2個目のウィンドウを作らない | |
+| [x] | Launch | `npm run tauri dev` | Dev Clipboardが1つだけ起動する | 2026-07-15 dev起動OK |
+| [x] | Shortcut | `Command+Option+V` | パネルが表示/退避する | 2026-07-15 OK |
+| [ ] | Single instance | 起動中に再度起動する | 既存パネルが前面に出て、2個目のウィンドウを作らない | dev起動では確認方法が分かりにくいため、配布用ビルド後に確認 |
 
 ## Core Clipboard Flow
 
 | Status | Area | Scenario | Expected | Notes |
 | --- | --- | --- | --- | --- |
-| [ ] | Capture | 外部アプリで `hello dev clipboard` をコピー | 1.4秒程度で新規カードが追加される | |
+| [x] | Capture | 外部アプリで `hello dev clipboard` をコピー | 1.4秒程度で新規カードが追加される | 2026-07-15 `hello dev clipboard 4` で追加確認。SQLite locked解消後にOK |
 | [ ] | Source app | Finderでファイルパスをコピー | Source appがFinder系として保存される | |
 | [ ] | Internal copy guard | Dev Clipboard内のCopyボタンを押す | コピー先として使われるが、新規カードは増えない | |
 | [ ] | Duplicate | 同じ本文を連続コピー | 重複保存方針どおりに扱われ、UIが破綻しない | |
@@ -136,7 +136,7 @@ Status:
 | --- | --- | --- | --- | --- |
 | [ ] | Clipboard read failure | クリップボード読取失敗を発生させる | dismiss可能なエラーとして見える | 注入方法要検討 |
 | [ ] | Copy failure | Copy back失敗を発生させる | UIだけuse countが増えない | 注入方法要検討 |
-| [ ] | Search failure | DB/検索失敗を発生させる | エラーバナーで分かる | 注入方法要検討 |
+| [x] | Search failure | DB/検索失敗を発生させる | エラーバナーで分かる | 2026-07-15 dev起動後にSQLite lockedが発生。React StrictMode無効化、DB cleanup、DB操作直列化、SQLite retryで解消確認 |
 | [ ] | Sleep resume | スリープ復帰後にコピー | 監視が復帰する | |
 | [ ] | Rapid copy | 連続で複数コピー | 最新履歴が欠落しにくく、UIが固まらない | |
 

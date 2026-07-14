@@ -115,6 +115,7 @@ type Clip = {
 type ClipRow = Omit<Clip, "matchField">;
 
 const DB_PATH = "sqlite:dev-clipboard-spike.db";
+const APP_BUNDLE_ID = "com.department.devclipboard";
 const PANEL_WIDTH = 600;
 const COMPACT_PANEL_WIDTH = 380;
 const PANEL_LEFT_MARGIN = 20;
@@ -201,6 +202,32 @@ const createDevClipboardHighlighter = createBundledHighlighter({
 const { codeToHtml: codeToHtmlLimited } = createSingletonShorthands(
   createDevClipboardHighlighter,
 );
+
+function isSqliteLockedError(error: unknown) {
+  return /database is locked|code:\s*5/i.test(String(error));
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function withSqliteRetry<T>(work: () => Promise<T>): Promise<T> {
+  const maxAttempts = 5;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await work();
+    } catch (error) {
+      if (attempt < maxAttempts && isSqliteLockedError(error)) {
+        await wait(250 * attempt);
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw new Error("SQLite retry limit reached");
+}
 
 function getTauriWindow() {
   try {
@@ -1105,10 +1132,12 @@ function App() {
   const lastSeenRef = useRef<string>("");
   const lastWrittenRef = useRef<string>("");
   const pendingRiskCopyTimeoutRef = useRef<number | null>(null);
+  const captureInFlightRef = useRef(false);
   const queryRef = useRef<string>("");
   const ignoredAppsRef = useRef<string[]>(ignoredApps);
   const windowFocusedRef = useRef(false);
   const dbRef = useRef<Database | null>(null);
+  const dbQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const clipsRef = useRef<Clip[]>([]);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const selectedSearchFiltersRef = useRef<HTMLDivElement | null>(null);
@@ -1124,6 +1153,12 @@ function App() {
       }
       return next;
     });
+  }
+
+  function enqueueDbOperation<T>(work: () => Promise<T>): Promise<T> {
+    const next = dbQueueRef.current.then(work, work);
+    dbQueueRef.current = next.catch(() => undefined);
+    return next;
   }
 
   function reportStatus(message: string) {
@@ -1555,50 +1590,68 @@ function App() {
     let disposed = false;
 
     async function openDatabase() {
-      try {
-        const db = await Database.load(DB_PATH);
-        dbRef.current = db;
-        const rows = await db.select<Clip[]>(
-          `SELECT
-            id,
-            body,
-            title,
-            vault,
-            type,
-            risk,
-            risk_label as riskLabel,
-            description,
-            when_to_use as whenToUse,
-            before,
-            created_at as createdAt,
-            last_used_at as lastUsedAt,
-            use_count as useCount,
-            char_count as charCount,
-            line_count as lineCount,
-            token_estimate as tokenEstimate,
-            is_demo as isDemo,
-            source_app_name as sourceAppName,
-            source_app_bundle_id as sourceAppBundleId
-          FROM clips
-          ORDER BY created_at DESC
-          LIMIT ${CLIP_PAGE_SIZE}`,
-        );
+      const maxAttempts = 5;
 
-        if (!disposed) {
-          const countRows = await db.select<Array<{ count: number }>>(
-            "SELECT COUNT(*) as count FROM clips",
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          const db = await Database.load(DB_PATH);
+          dbRef.current = db;
+          await db.execute("PRAGMA busy_timeout = 5000");
+          const rows = await db.select<Clip[]>(
+            `SELECT
+              id,
+              body,
+              title,
+              vault,
+              type,
+              risk,
+              risk_label as riskLabel,
+              description,
+              when_to_use as whenToUse,
+              before,
+              created_at as createdAt,
+              last_used_at as lastUsedAt,
+              use_count as useCount,
+              char_count as charCount,
+              line_count as lineCount,
+              token_estimate as tokenEstimate,
+              is_demo as isDemo,
+              source_app_name as sourceAppName,
+              source_app_bundle_id as sourceAppBundleId
+            FROM clips
+            ORDER BY created_at DESC
+            LIMIT ${CLIP_PAGE_SIZE}`,
           );
-          const totalCount = countRows[0]?.count ?? rows.length;
 
-          await reindexSearch(rows, db);
-          setClips(rows);
-          setResultTotal(rows.length);
-          setTotalClipCount(totalCount);
-          setDbReady(true);
-          setStatus(`SQLite ready. Loaded ${rows.length} clips.`);
+          if (!disposed) {
+            const countRows = await db.select<Array<{ count: number }>>(
+              "SELECT COUNT(*) as count FROM clips",
+            );
+            const totalCount = countRows[0]?.count ?? rows.length;
+
+            setClips(rows);
+            setResultTotal(rows.length);
+            setTotalClipCount(totalCount);
+            setDbReady(true);
+            setStatus(`SQLite ready. Loaded ${rows.length} clips.`);
+          }
+          return;
+        } catch (error) {
+          if (
+            !disposed &&
+            attempt < maxAttempts &&
+            isSqliteLockedError(error)
+          ) {
+            setStatus(`SQLite busy. Retrying open (${attempt}/${maxAttempts})`);
+            await wait(350 * attempt);
+            continue;
+          }
+
+          if (!disposed) {
+            reportError(`SQLite open failed: ${String(error)}`);
+          }
+          return;
         }
-      } catch (error) {
-        reportError(`SQLite open failed: ${String(error)}`);
       }
     }
 
@@ -1606,6 +1659,11 @@ function App() {
 
     return () => {
       disposed = true;
+      const db = dbRef.current;
+      dbRef.current = null;
+      db?.close().catch(() => {
+        // The app is unmounting; there is no useful recovery path here.
+      });
     };
   }, []);
 
@@ -1615,71 +1673,77 @@ function App() {
       throw new Error("SQLite database is not ready");
     }
 
-    const existingRows = await db.select<Array<{ count: number }>>(
-      "SELECT COUNT(*) as count FROM clips WHERE body = $1",
-      [clip.body],
-    );
-    const existingCount = existingRows[0]?.count ?? 0;
-    if (existingCount > 0) {
-      throw new Error("Clip body already exists in SQLite");
-    }
-
-    await runTransaction(db, async () => {
-      await db.execute(
-        `INSERT OR IGNORE INTO clips (
-        id,
-        body,
-        title,
-        vault,
-        type,
-        risk,
-        risk_label,
-        description,
-        when_to_use,
-        before,
-        created_at,
-        last_used_at,
-        use_count,
-        char_count,
-        line_count,
-        token_estimate,
-        is_demo,
-        source_app_name,
-        source_app_bundle_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
-        [
-          clip.id,
-          clip.body,
-          clip.title,
-          clip.vault,
-          clip.type,
-          clip.risk,
-          clip.riskLabel,
-          clip.description,
-          clip.whenToUse,
-          clip.before,
-          clip.createdAt,
-          clip.lastUsedAt ?? null,
-          clip.useCount,
-          clip.charCount,
-          clip.lineCount,
-          clip.tokenEstimate,
-          clip.isDemo ? 1 : 0,
-          clip.sourceAppName,
-          clip.sourceAppBundleId,
-        ],
+    await enqueueDbOperation(async () => {
+      const existingRows = await withSqliteRetry(() =>
+        db.select<Array<{ count: number }>>(
+          "SELECT COUNT(*) as count FROM clips WHERE body = $1",
+          [clip.body],
+        ),
       );
-      await upsertSearchIndex(clip, db);
-    });
+      const existingCount = existingRows[0]?.count ?? 0;
+      if (existingCount > 0) {
+        throw new Error("Clip body already exists in SQLite");
+      }
 
-    const rows = await db.select<Array<{ count: number }>>(
-      "SELECT COUNT(*) as count FROM clips",
-    );
-    const count = rows[0]?.count ?? 0;
-    if (count < 1) {
-      throw new Error("SQLite insert did not persist a row");
-    }
-    setTotalClipCount(count);
+      await runTransaction(db, async () => {
+        await db.execute(
+          `INSERT OR IGNORE INTO clips (
+          id,
+          body,
+          title,
+          vault,
+          type,
+          risk,
+          risk_label,
+          description,
+          when_to_use,
+          before,
+          created_at,
+          last_used_at,
+          use_count,
+          char_count,
+          line_count,
+          token_estimate,
+          is_demo,
+          source_app_name,
+          source_app_bundle_id
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
+          [
+            clip.id,
+            clip.body,
+            clip.title,
+            clip.vault,
+            clip.type,
+            clip.risk,
+            clip.riskLabel,
+            clip.description,
+            clip.whenToUse,
+            clip.before,
+            clip.createdAt,
+            clip.lastUsedAt ?? null,
+            clip.useCount,
+            clip.charCount,
+            clip.lineCount,
+            clip.tokenEstimate,
+            clip.isDemo ? 1 : 0,
+            clip.sourceAppName,
+            clip.sourceAppBundleId,
+          ],
+        );
+        await upsertSearchIndex(clip, db);
+      });
+
+      const rows = await withSqliteRetry(() =>
+        db.select<Array<{ count: number }>>(
+          "SELECT COUNT(*) as count FROM clips",
+        ),
+      );
+      const count = rows[0]?.count ?? 0;
+      if (count < 1) {
+        throw new Error("SQLite insert did not persist a row");
+      }
+      setTotalClipCount(count);
+    });
   }
 
   async function updateClipUse(clip: Clip) {
@@ -1713,19 +1777,33 @@ function App() {
     db: Database,
     work: () => Promise<T>,
   ): Promise<T> {
-    await db.execute("BEGIN IMMEDIATE");
-    try {
-      const result = await work();
-      await db.execute("COMMIT");
-      return result;
-    } catch (error) {
+    const maxAttempts = 5;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       try {
-        await db.execute("ROLLBACK");
-      } catch {
-        // Preserve the original database error.
+        await db.execute("BEGIN IMMEDIATE");
+        try {
+          const result = await work();
+          await db.execute("COMMIT");
+          return result;
+        } catch (error) {
+          try {
+            await db.execute("ROLLBACK");
+          } catch {
+            // Preserve the original database error.
+          }
+          throw error;
+        }
+      } catch (error) {
+        if (attempt < maxAttempts && isSqliteLockedError(error)) {
+          await wait(250 * attempt);
+          continue;
+        }
+        throw error;
       }
-      throw error;
     }
+
+    throw new Error("SQLite transaction retry limit reached");
   }
 
   async function upsertSearchIndex(clip: Clip, db = dbRef.current) {
@@ -1750,19 +1828,6 @@ function App() {
         clip.before,
       ],
     );
-  }
-
-  async function reindexSearch(clipsToIndex: Clip[], db = dbRef.current) {
-    if (!db) {
-      throw new Error("SQLite database is not ready");
-    }
-
-    await runTransaction(db, async () => {
-      await db.execute("DELETE FROM clip_search");
-      for (const clip of clipsToIndex) {
-        await upsertSearchIndex(clip, db);
-      }
-    });
   }
 
   async function addDevelopmentDemoClips(db = dbRef.current) {
@@ -2003,36 +2068,38 @@ function App() {
 
     const vaultClause = vault === "All Vaults" ? "" : "WHERE vault = $1";
     const bindValues = vault === "All Vaults" ? [] : [vault];
-    const rows = await db.select<ClipRow[]>(
-      `SELECT
-        id,
-        body,
-        title,
-        vault,
-        type,
-        risk,
-        risk_label as riskLabel,
-        description,
-        when_to_use as whenToUse,
-        before,
-        created_at as createdAt,
-        last_used_at as lastUsedAt,
-        use_count as useCount,
-        char_count as charCount,
-        line_count as lineCount,
-        token_estimate as tokenEstimate,
-        is_demo as isDemo,
-        source_app_name as sourceAppName,
-        source_app_bundle_id as sourceAppBundleId
-      FROM clips
-      ${vaultClause}
-      ORDER BY created_at DESC
-      LIMIT ${CLIP_QUERY_LIMIT}`,
-      bindValues,
-    );
-    const filteredRows = rows.filter((clip) =>
-      matchesSearchFilters(clip, filters),
-    );
+
+    const filteredRows = await enqueueDbOperation(async () => {
+      const rows = await db.select<ClipRow[]>(
+        `SELECT
+          id,
+          body,
+          title,
+          vault,
+          type,
+          risk,
+          risk_label as riskLabel,
+          description,
+          when_to_use as whenToUse,
+          before,
+          created_at as createdAt,
+          last_used_at as lastUsedAt,
+          use_count as useCount,
+          char_count as charCount,
+          line_count as lineCount,
+          token_estimate as tokenEstimate,
+          is_demo as isDemo,
+          source_app_name as sourceAppName,
+          source_app_bundle_id as sourceAppBundleId
+        FROM clips
+        ${vaultClause}
+        ORDER BY created_at DESC
+        LIMIT ${CLIP_QUERY_LIMIT}`,
+        bindValues,
+      );
+
+      return rows.filter((clip) => matchesSearchFilters(clip, filters));
+    });
 
     setResultTotal(filteredRows.length);
     setClips(
@@ -2078,38 +2145,39 @@ function App() {
     const bindValues =
       vault === "All Vaults" ? [matchQuery] : [matchQuery, vault];
 
-    const rows = await db.select<ClipRow[]>(
-      `SELECT
-        clips.id,
-        clips.body,
-        clips.title,
-        clips.vault,
-        clips.type,
-        clips.risk,
-        clips.risk_label as riskLabel,
-        clips.description,
-        clips.when_to_use as whenToUse,
-        clips.before,
-        clips.created_at as createdAt,
-        clips.last_used_at as lastUsedAt,
-        clips.use_count as useCount,
-        clips.char_count as charCount,
-        clips.line_count as lineCount,
-        clips.token_estimate as tokenEstimate,
-        clips.is_demo as isDemo,
-        clips.source_app_name as sourceAppName,
-        clips.source_app_bundle_id as sourceAppBundleId
-      FROM clip_search
-      JOIN clips ON clips.id = clip_search.id
-      WHERE clip_search MATCH $1
-      ${vaultClause}
-      ORDER BY rank
-      LIMIT ${CLIP_QUERY_LIMIT}`,
-      bindValues,
-    );
-    const filteredRows = rows.filter((clip) =>
-      matchesSearchFilters(clip, filters),
-    );
+    const filteredRows = await enqueueDbOperation(async () => {
+      const rows = await db.select<ClipRow[]>(
+        `SELECT
+          clips.id,
+          clips.body,
+          clips.title,
+          clips.vault,
+          clips.type,
+          clips.risk,
+          clips.risk_label as riskLabel,
+          clips.description,
+          clips.when_to_use as whenToUse,
+          clips.before,
+          clips.created_at as createdAt,
+          clips.last_used_at as lastUsedAt,
+          clips.use_count as useCount,
+          clips.char_count as charCount,
+          clips.line_count as lineCount,
+          clips.token_estimate as tokenEstimate,
+          clips.is_demo as isDemo,
+          clips.source_app_name as sourceAppName,
+          clips.source_app_bundle_id as sourceAppBundleId
+        FROM clip_search
+        JOIN clips ON clips.id = clip_search.id
+        WHERE clip_search MATCH $1
+        ${vaultClause}
+        ORDER BY rank
+        LIMIT ${CLIP_QUERY_LIMIT}`,
+        bindValues,
+      );
+
+      return rows.filter((clip) => matchesSearchFilters(clip, filters));
+    });
 
     setResultTotal(filteredRows.length);
     setClips(
@@ -2136,19 +2204,15 @@ function App() {
     let disposed = false;
 
     async function captureClipboard() {
+      if (captureInFlightRef.current) return;
+      captureInFlightRef.current = true;
+
       try {
         const text = await readText();
         const normalized = text.trim();
 
         if (!normalized || disposed) return;
         if (normalized === lastSeenRef.current) return;
-
-        lastSeenRef.current = normalized;
-
-        if (windowFocusedRef.current) {
-          setStatus("Clipboard change inside Dev Clipboard was not saved.");
-          return;
-        }
 
         if (normalized === queryRef.current.trim()) {
           setStatus("Search text was not saved as a clip.");
@@ -2172,10 +2236,19 @@ function App() {
         }
 
         const sourceBundleId = sourceApplication?.bundleId.toLowerCase();
+        const copiedFromDevClipboard = sourceBundleId === APP_BUNDLE_ID;
+
+        if (copiedFromDevClipboard) {
+          lastSeenRef.current = normalized;
+          setStatus("Clipboard change inside Dev Clipboard was not saved.");
+          return;
+        }
+
         if (
           sourceBundleId &&
           ignoredAppsRef.current.includes(sourceBundleId)
         ) {
+          lastSeenRef.current = normalized;
           setStatus(
             `Clipboard content from ${sourceApplication?.name ?? sourceBundleId} was ignored.`,
           );
@@ -2196,6 +2269,7 @@ function App() {
           setStatus(
             `Sensitive clipboard body was blocked. Saved risk note: ${sensitiveMatch}.`,
           );
+          lastSeenRef.current = normalized;
           return;
         }
 
@@ -2204,6 +2278,7 @@ function App() {
         );
 
         if (alreadyExists) {
+          lastSeenRef.current = normalized;
           setStatus("Clipboard text already exists");
           return;
         }
@@ -2214,9 +2289,12 @@ function App() {
         setClips((current) =>
           [clipToSave, ...current].slice(0, visibleClipCount),
         );
+        lastSeenRef.current = normalized;
         setStatus("Captured clipboard text into SQLite");
       } catch (error) {
         reportError(`Clipboard read failed: ${String(error)}`);
+      } finally {
+        captureInFlightRef.current = false;
       }
     }
 
