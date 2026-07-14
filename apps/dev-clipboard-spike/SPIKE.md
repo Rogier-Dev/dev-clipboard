@@ -93,6 +93,8 @@ Completed:
 - `Description` and `When to use` use the same inline edit/save/cancel pattern as `Before`.
 - SQLite stores `description` and `when_to_use` directly on each clip for the spike.
 - FTS search indexes body, title, risk, `Description`, `When to use`, `Before`, and Dev metadata.
+- New clips store the macOS frontmost application name and bundle ID. Finder attribution has been verified without Accessibility permission.
+- Ignored apps are stored locally by bundle ID and checked before clipboard text is persisted.
 - Development demo clips are no longer inserted at startup.
 - Development builds expose explicit `Add demo clips` and `Remove demo clips only` actions in Settings.
 - Demo rows use both a visible `[Demo]` title prefix and an SQLite `is_demo` flag. Existing fixed `demo-` IDs are migrated without changing real clipboard history rows.
@@ -108,6 +110,7 @@ Completed:
 - History deletion and ignored app settings still need product-quality implementation.
 - Clipboard capture is currently text-first. Rich data, images, and advanced file handling are outside this spike.
 - Internal copy guard intentionally ignores clipboard changes while Dev Clipboard is focused; this avoids history pollution but can miss some edge cases.
+- Source attribution is sampled when the clipboard poll detects a change. Very fast app switching after Copy can therefore attribute the next frontmost app rather than the exact source app.
 - Secret blocking is intentionally heuristic. Ambiguous text still needs user judgment.
 
 ## MVP Checklist

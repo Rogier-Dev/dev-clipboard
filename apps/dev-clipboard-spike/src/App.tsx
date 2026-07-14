@@ -1,6 +1,7 @@
 import { type MouseEvent, useEffect, useRef, useState } from "react";
 import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 import Database from "@tauri-apps/plugin-sql";
+import { invoke } from "@tauri-apps/api/core";
 import {
   getCurrentWindow,
   currentMonitor,
@@ -90,8 +91,15 @@ type Clip = {
   lineCount: number;
   tokenEstimate: number;
   isDemo: boolean;
+  sourceAppName: string;
+  sourceAppBundleId: string;
   matchField?: string;
   matchReason?: string;
+};
+
+type SourceApplication = {
+  name: string;
+  bundleId: string;
 };
 
 type ClipRow = Omit<Clip, "matchField">;
@@ -141,6 +149,7 @@ const THEME_OPTIONS: Array<{ label: string; value: ThemeMode }> = [
 
 const THEME_STORAGE_KEY = "dev-clipboard-theme-mode";
 const CARD_SIZE_STORAGE_KEY = "dev-clipboard-card-size";
+const IGNORED_APPS_STORAGE_KEY = "dev-clipboard-ignored-apps";
 const SHIKI_THEME = "github-dark" as const;
 const SHIKI_LANGUAGES = [
   "bash",
@@ -204,6 +213,21 @@ function readStoredCardSize(): CardSize {
   if (typeof window === "undefined") return "normal";
   const stored = window.localStorage.getItem(CARD_SIZE_STORAGE_KEY);
   return stored === "compact" || stored === "large" ? stored : "normal";
+}
+
+function readStoredIgnoredApps() {
+  if (typeof window === "undefined") return [] as string[];
+
+  try {
+    const value = JSON.parse(
+      window.localStorage.getItem(IGNORED_APPS_STORAGE_KEY) ?? "[]",
+    );
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string")
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 const DEMO_HEAVY_CLIPS: Clip[] = ([
@@ -455,10 +479,14 @@ Mock image clip for checking data-size tags and future crop/cleanup behavior.`,
     lineCount: 5,
     tokenEstimate: 80,
   },
-] as Array<Omit<Clip, "isDemo">>).map((clip) => ({
+] as Array<
+  Omit<Clip, "isDemo" | "sourceAppName" | "sourceAppBundleId">
+>).map((clip) => ({
   ...clip,
   title: clip.title.startsWith("[Demo] ") ? clip.title : `[Demo] ${clip.title}`,
   isDemo: true,
+  sourceAppName: "",
+  sourceAppBundleId: "",
 }));
 
 const DEV_SEARCH_SYNONYMS: Array<[RegExp, string]> = [
@@ -654,7 +682,7 @@ function makeTitle(text: string, type: string) {
   return compact;
 }
 
-function createClip(text: string): Clip {
+function createClip(text: string, sourceApplication?: SourceApplication): Clip {
   const vault = detectVault(text);
   const type = detectType(text, vault);
   const risk = classifyRisk(text);
@@ -676,6 +704,8 @@ function createClip(text: string): Clip {
     lineCount: countLines(text),
     tokenEstimate: estimateTokens(text),
     isDemo: false,
+    sourceAppName: sourceApplication?.name ?? "",
+    sourceAppBundleId: sourceApplication?.bundleId ?? "",
   };
 }
 
@@ -830,6 +860,19 @@ function visibleNoteFields(clip: Clip): NoteField[] {
 }
 
 function sourceApp(clip: Clip) {
+  if (clip.sourceAppName) {
+    const label = clip.sourceAppName
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2);
+    return {
+      label: label || clip.sourceAppName.slice(0, 2),
+      name: clip.sourceAppName,
+      className: "source-dev",
+    };
+  }
+
   const type = previewType(clip);
 
   if (type === "illustrator")
@@ -1181,6 +1224,10 @@ function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyDeleteOpen, setHistoryDeleteOpen] = useState(false);
   const [historyDeleting, setHistoryDeleting] = useState(false);
+  const [ignoredApps, setIgnoredApps] = useState<string[]>(
+    readStoredIgnoredApps,
+  );
+  const [ignoredAppInput, setIgnoredAppInput] = useState("");
   const [clipContextMenu, setClipContextMenu] =
     useState<ClipContextMenu | null>(null);
   const [lastDeletedClip, setLastDeletedClip] = useState<Clip | null>(null);
@@ -1194,6 +1241,7 @@ function App() {
   const lastSeenRef = useRef<string>("");
   const lastWrittenRef = useRef<string>("");
   const queryRef = useRef<string>("");
+  const ignoredAppsRef = useRef<string[]>(ignoredApps);
   const windowFocusedRef = useRef(false);
   const dbRef = useRef<Database | null>(null);
   const clipsRef = useRef<Clip[]>([]);
@@ -1208,6 +1256,26 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem(CARD_SIZE_STORAGE_KEY, cardSize);
   }, [cardSize]);
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      IGNORED_APPS_STORAGE_KEY,
+      JSON.stringify(ignoredApps),
+    );
+  }, [ignoredApps]);
+
+  function addIgnoredApp() {
+    const bundleId = ignoredAppInput.trim().toLowerCase();
+    if (!bundleId) return;
+    setIgnoredApps((current) =>
+      current.includes(bundleId) ? current : [...current, bundleId].sort(),
+    );
+    setIgnoredAppInput("");
+  }
+
+  function removeIgnoredApp(bundleId: string) {
+    setIgnoredApps((current) => current.filter((item) => item !== bundleId));
+  }
 
   useEffect(() => {
     if (!window.matchMedia) return;
@@ -1314,6 +1382,10 @@ function App() {
   useEffect(() => {
     queryRef.current = query;
   }, [query]);
+
+  useEffect(() => {
+    ignoredAppsRef.current = ignoredApps;
+  }, [ignoredApps]);
 
   useEffect(() => {
     const filterRow = selectedSearchFiltersRef.current;
@@ -1610,7 +1682,9 @@ function App() {
             char_count as charCount,
             line_count as lineCount,
             token_estimate as tokenEstimate,
-            is_demo as isDemo
+            is_demo as isDemo,
+            source_app_name as sourceAppName,
+            source_app_bundle_id as sourceAppBundleId
           FROM clips
           ORDER BY created_at DESC
           LIMIT 50`,
@@ -1667,8 +1741,10 @@ function App() {
         char_count,
         line_count,
         token_estimate,
-        is_demo
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+        is_demo,
+        source_app_name,
+        source_app_bundle_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
       [
         clip.id,
         clip.body,
@@ -1687,6 +1763,8 @@ function App() {
         clip.lineCount,
         clip.tokenEstimate,
         clip.isDemo ? 1 : 0,
+        clip.sourceAppName,
+        clip.sourceAppBundleId,
       ],
     );
 
@@ -2009,7 +2087,9 @@ function App() {
         char_count as charCount,
         line_count as lineCount,
         token_estimate as tokenEstimate,
-        is_demo as isDemo
+        is_demo as isDemo,
+        source_app_name as sourceAppName,
+        source_app_bundle_id as sourceAppBundleId
       FROM clips
       ${vaultClause}
       ORDER BY created_at DESC
@@ -2081,7 +2161,9 @@ function App() {
         clips.char_count as charCount,
         clips.line_count as lineCount,
         clips.token_estimate as tokenEstimate,
-        clips.is_demo as isDemo
+        clips.is_demo as isDemo,
+        clips.source_app_name as sourceAppName,
+        clips.source_app_bundle_id as sourceAppBundleId
       FROM clip_search
       JOIN clips ON clips.id = clip_search.id
       WHERE clip_search MATCH $1
@@ -2142,6 +2224,28 @@ function App() {
           return;
         }
 
+        let sourceApplication: SourceApplication | undefined;
+        try {
+          sourceApplication =
+            (await invoke<SourceApplication | null>(
+              "frontmost_application",
+            )) ?? undefined;
+        } catch {
+          // Source attribution is useful metadata, but capture must continue
+          // when it is unavailable on the current platform.
+        }
+
+        const sourceBundleId = sourceApplication?.bundleId.toLowerCase();
+        if (
+          sourceBundleId &&
+          ignoredAppsRef.current.includes(sourceBundleId)
+        ) {
+          setStatus(
+            `Clipboard content from ${sourceApplication?.name ?? sourceBundleId} was ignored.`,
+          );
+          return;
+        }
+
         const sensitiveMatch = detectSensitiveClip(text);
         if (sensitiveMatch) {
           setStatus(
@@ -2159,7 +2263,7 @@ function App() {
           return;
         }
 
-        const clipToSave = createClip(text);
+        const clipToSave = createClip(text, sourceApplication);
         await insertClip(clipToSave);
         setClips((current) => [clipToSave, ...current].slice(0, 50));
         setStatus("Captured clipboard text into SQLite");
@@ -2374,6 +2478,19 @@ function App() {
 
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
+  }
+
+  function knownSourceApplications() {
+    const applications = new Map<string, string>();
+    for (const clip of clips) {
+      if (clip.sourceAppBundleId) {
+        applications.set(
+          clip.sourceAppBundleId.toLowerCase(),
+          clip.sourceAppName || clip.sourceAppBundleId,
+        );
+      }
+    }
+    return [...applications].sort((a, b) => a[1].localeCompare(b[1]));
   }
 
   function startNoteEdit(clip: Clip, field: NoteField) {
@@ -4217,15 +4334,81 @@ function App() {
                       </div>
                       <span className="futurePill">Future</span>
                     </div>
-                    <div className="settingRow muted">
+                    <div className="ignoredAppsSetting">
                       <div>
                         <strong>Ignored apps</strong>
                         <p>
-                          Never capture from password managers, banking apps, or
-                          selected apps.
+                          Bundle IDs listed here are checked before clipboard
+                          content is saved.
                         </p>
                       </div>
-                      <span className="futurePill">Planned</span>
+                      <form
+                        className="ignoredAppForm"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          addIgnoredApp();
+                        }}
+                      >
+                        <input
+                          aria-label="App bundle ID to ignore"
+                          onChange={(event) =>
+                            setIgnoredAppInput(event.target.value)
+                          }
+                          placeholder="com.example.passwordmanager"
+                          spellCheck={false}
+                          value={ignoredAppInput}
+                        />
+                        <button disabled={!ignoredAppInput.trim()} type="submit">
+                          Add
+                        </button>
+                      </form>
+                      {knownSourceApplications().some(
+                        ([bundleId]) => !ignoredApps.includes(bundleId),
+                      ) && (
+                        <div className="knownSourceApps">
+                          <span>Recently captured</span>
+                          <div>
+                            {knownSourceApplications()
+                              .filter(
+                                ([bundleId]) =>
+                                  !ignoredApps.includes(bundleId),
+                              )
+                              .map(([bundleId, name]) => (
+                                <button
+                                  key={bundleId}
+                                  onClick={() =>
+                                    setIgnoredApps((current) =>
+                                      [...current, bundleId].sort(),
+                                    )
+                                  }
+                                  type="button"
+                                >
+                                  + {name}
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="ignoredAppList">
+                        {ignoredApps.length === 0 ? (
+                          <span className="ignoredAppsEmpty">
+                            No apps ignored
+                          </span>
+                        ) : (
+                          ignoredApps.map((bundleId) => (
+                            <span key={bundleId}>
+                              {bundleId}
+                              <button
+                                aria-label={`Stop ignoring ${bundleId}`}
+                                onClick={() => removeIgnoredApp(bundleId)}
+                                type="button"
+                              >
+                                <X size={12} />
+                              </button>
+                            </span>
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
                 </section>

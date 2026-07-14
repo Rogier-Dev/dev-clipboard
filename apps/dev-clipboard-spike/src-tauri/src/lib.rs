@@ -7,6 +7,39 @@ use std::{
 use tauri::{LogicalPosition, LogicalSize, Manager, WebviewWindow, WindowEvent};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SourceApplication {
+    name: String,
+    bundle_id: String,
+}
+
+#[tauri::command]
+fn frontmost_application() -> Option<SourceApplication> {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2_app_kit::NSWorkspace;
+
+        let workspace = NSWorkspace::sharedWorkspace();
+        let application = workspace
+            .frontmostApplication()
+            .or_else(|| workspace.menuBarOwningApplication())?;
+        return Some(SourceApplication {
+            name: application
+                .localizedName()
+                .map(|name| name.to_string())
+                .unwrap_or_else(|| "Unknown app".to_string()),
+            bundle_id: application
+                .bundleIdentifier()
+                .map(|identifier| identifier.to_string())
+                .unwrap_or_default(),
+        });
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    None
+}
+
 static PANEL_VISIBLE: AtomicBool = AtomicBool::new(true);
 static PANEL_ANIMATION_ID: AtomicU64 = AtomicU64::new(0);
 const PANEL_WIDTH: f64 = 600.0;
@@ -189,6 +222,15 @@ pub fn run() {
         "#,
             kind: tauri_plugin_sql::MigrationKind::Up,
         },
+        tauri_plugin_sql::Migration {
+            version: 4,
+            description: "add_source_application",
+            sql: r#"
+            ALTER TABLE clips ADD COLUMN source_app_name TEXT NOT NULL DEFAULT '';
+            ALTER TABLE clips ADD COLUMN source_app_bundle_id TEXT NOT NULL DEFAULT '';
+        "#,
+            kind: tauri_plugin_sql::MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()
@@ -234,6 +276,7 @@ pub fn run() {
                 .add_migrations("sqlite:dev-clipboard-spike.db", migrations)
                 .build(),
         )
+        .invoke_handler(tauri::generate_handler![frontmost_application])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -51,7 +51,7 @@ Status:
 
 - [x] `DEMO_HEAVY_CLIPS` の自動投入を停止。開発版Settingsから明示的に追加・デモだけ削除でき、`[Demo]`タイトルと`is_demo`フラグで実履歴と区別する。
 - [~] 履歴全削除は、全件数・Undo不可を示す確認ダイアログと失敗表示付きで実装済み。実データ削除後のSQLite/FTS・再起動QAを完了する。
-- [ ] コピー元アプリを実取得するか、Ignored appsをMVPから外すか決定する。設定に実装済みのような表示を残さない。
+- [~] macOSの前面アプリ名・Bundle ID取得とIgnored apps設定を実装済み。Finderからのコピーが`com.apple.finder`として保存されることを実機確認済み。除外後に保存されないことと、アプリ切替直後の精度を追加QAする。
 - [x] パスワード、秘密鍵、`.env`など機密情報の保存方針を決め、明らかな秘密情報は保存前にブロックする。
 - [ ] Risk判定ルールの自動テストを追加する。少なくとも `rm -rf`、`sudo`、`git reset --hard`、Docker削除系と安全な類似文字列を含める。
 - [ ] DB操作を可能な範囲でトランザクション化し、`clips` と `clip_search` の片方だけが更新される状態を防ぐ。
@@ -79,7 +79,7 @@ Status:
 P0完了後、MVP候補版を他者に渡す前に対応する。
 
 - [~] Settings: Themeのみ実動作。Card sizeは実動作と永続化に接続済み。他のモック項目を整理する。
-- [~] Source app表示: 現在は内容由来の推定・モック。実際の前面アプリ取得とアイコン表示は未実装。
+- [~] Source app表示: 新規クリップはmacOSの前面アプリ名・Bundle IDを保存する。既存・Demoクリップは内容由来の表示へフォールバックする。実アプリアイコン取得は未実装。
 - [~] Compact / Normal / Large: 切替とCard size保存は実装済み。全カード種・全テーマの実機QAが未完了。
 - [~] メディアカード: Image / Video / Audio / SVG / Illustrator / PDF / File / URL / Colorの表示ルールはUI検証中心。実クリップボードデータ取得はtext-firstの範囲外。
 - [~] Color: HEX / RGB / HSL / RGBAの表示変換がある。原文保持、alpha、無効値、Copy形式の回帰確認が必要。

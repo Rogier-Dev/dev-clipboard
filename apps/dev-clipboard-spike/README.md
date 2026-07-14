@@ -21,6 +21,8 @@ Validated in this spike:
 - Search hit source display such as `Matched in Body`, `Matched in Before`, or `Matched in Dev metadata`.
 - Copy-back flow: review a saved clip, copy it back to the system clipboard, then paste manually with `Command+V`.
 - Internal copy guard: clipboard changes while Dev Clipboard is focused are not saved as new clips.
+- Best-effort macOS source attribution using the frontmost app name and bundle ID, without Accessibility permission.
+- Bundle-ID based ignored-app settings checked before a clip is stored.
 - Secret blocking: obvious private keys, tokens, API keys, and password assignments are not saved.
 
 Intentionally not included in this spike:
