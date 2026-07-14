@@ -739,6 +739,28 @@ function visibleNoteFields(clip: Clip): NoteField[] {
 }
 
 function sourceApp(clip: Clip) {
+  const sourceName = clip.sourceAppName.trim();
+  const sourceBundleId = clip.sourceAppBundleId.toLowerCase();
+
+  if (sourceBundleId === "com.apple.finder" || /finder/i.test(sourceName)) {
+    return { label: "Fi", name: "Finder", className: "source-finder" };
+  }
+  if (/cursor/i.test(sourceName) || sourceBundleId.includes("todesktop")) {
+    return { label: "Cu", name: "Cursor", className: "source-cursor" };
+  }
+  if (/figma/i.test(sourceName)) {
+    return { label: "Fg", name: "Figma", className: "source-figma" };
+  }
+  if (/illustrator/i.test(sourceName)) {
+    return { label: "Ai", name: "Illustrator", className: "source-ai" };
+  }
+  if (/chrome/i.test(sourceName)) {
+    return { label: "Ch", name: "Chrome", className: "source-chrome" };
+  }
+  if (/textedit/i.test(sourceName)) {
+    return { label: "Tx", name: "TextEdit", className: "source-textedit" };
+  }
+
   if (clip.sourceAppName) {
     const label = clip.sourceAppName
       .split(/\s+/)
@@ -3653,15 +3675,14 @@ function App() {
                   <div className="clipHeader">
                     <div>
                       <div className="meta">
-                        {isMediaPreviewClip(clip) && (
-                          <span
-                            className={`sourceMetaIcon ${sourceApp(clip).className}`}
-                          >
-                            <span className="appIcon">
-                              {sourceApp(clip).label}
-                            </span>
+                        <span
+                          className={`sourceMetaIcon ${sourceApp(clip).className}`}
+                          title={`Copied from ${sourceApp(clip).name}`}
+                        >
+                          <span className="appIcon">
+                            {sourceApp(clip).label}
                           </span>
-                        )}
+                        </span>
                         <span className={`riskTag riskTag-${clip.risk}`}>
                           <RiskBadgeIcon risk={clip.risk} />
                           <span className="tagLabel">
