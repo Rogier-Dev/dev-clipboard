@@ -20,6 +20,16 @@ import {
   type RiskLevel,
 } from "./clipRules";
 import {
+  countLines,
+  detectType,
+  detectVault,
+  estimateTokens,
+  makeTitle,
+  type SourceApplication,
+  type Vault,
+} from "./clipModel";
+import { buildDevSearchText, DEV_SEARCH_SYNONYMS } from "./searchModel";
+import {
   ArrowDownUp,
   Check,
   AudioLines,
@@ -59,7 +69,6 @@ import {
 } from "lucide-react";
 import "./App.css";
 
-type Vault = "Chat" | "Editor" | "Terminal";
 type NoteField = "description" | "whenToUse" | "before";
 type CardSize = "compact" | "normal" | "large";
 type SortMode = "recent" | "risk" | "used";
@@ -101,11 +110,6 @@ type Clip = {
   sourceAppBundleId: string;
   matchField?: string;
   matchReason?: string;
-};
-
-type SourceApplication = {
-  name: string;
-  bundleId: string;
 };
 
 type ClipRow = Omit<Clip, "matchField">;
@@ -495,72 +499,8 @@ Mock image clip for checking data-size tags and future crop/cleanup behavior.`,
   sourceAppBundleId: "",
 }));
 
-const DEV_SEARCH_SYNONYMS: Array<[RegExp, string]> = [
-  [
-    /\brm\s+(-[a-zA-Z]*r[a-zA-Z]*f|-rf|-fr)\b/i,
-    "再帰的に削除 再起的に削除 再帰削除 再起削除 削除 remove delete clean build output dist削除",
-  ],
-  [
-    /docker\s+compose\s+down\b.*--volumes/i,
-    "volume削除 ボリューム削除 docker停止 コンテナ削除",
-  ],
-  [/\bgit\s+reset\s+--hard\b/i, "変更破棄 git履歴 作業ツリー reset hard"],
-  [/\bgit\s+clean\b/i, "未追跡ファイル削除 clean untracked"],
-  [/\bsudo\b/i, "管理者権限 privilege 権限 root"],
-  [
-    /\bcurl\b.*\|\s*(sh|bash)/i,
-    "remote script リモートスクリプト pipe install",
-  ],
-  [
-    /\.env|token|secret|password|id_rsa/i,
-    "機密情報 secret token password env 秘密鍵",
-  ],
-];
-
 function createId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function estimateTokens(text: string) {
-  return Math.max(1, Math.ceil(text.length / 4));
-}
-
-function countLines(text: string) {
-  return text.length === 0 ? 0 : text.split(/\r\n|\r|\n/).length;
-}
-
-function detectVault(text: string): Vault {
-  const trimmed = text.trim();
-
-  if (
-    /^(rm|mv|cp|mkdir|pnpm|npm|yarn|bun|git|docker|cargo|brew|sudo|curl)\b/.test(
-      trimmed,
-    )
-  ) {
-    return "Terminal";
-  }
-
-  if (/```|^#\s|prompt|system:|user:|assistant:|要約|レビュー/i.test(trimmed)) {
-    return "Chat";
-  }
-
-  return "Editor";
-}
-
-function detectType(text: string, vault: Vault) {
-  const trimmed = text.trim();
-
-  if (vault === "Terminal") return "Command";
-  if (/^#|```|\n[-*]\s/.test(trimmed)) return "Markdown";
-  if (/^#[0-9a-f]{3,8}$/i.test(trimmed) || /^rgba?\(/i.test(trimmed)) {
-    return "Color";
-  }
-  if (/^https?:\/\//i.test(trimmed)) return "URL";
-  if (/[{};]/.test(trimmed) || /<\/?[a-z][\s\S]*>/i.test(trimmed)) {
-    return "Code";
-  }
-
-  return "Text";
 }
 
 function detectLanguage(clip: Clip): ShikiLanguage {
@@ -583,19 +523,6 @@ function shouldHighlightClip(clip: Clip) {
   return ["command", "code", "markdown", "svg", "text"].includes(
     previewType(clip),
   );
-}
-
-function makeTitle(text: string, type: string) {
-  const firstLine = text.trim().split(/\r\n|\r|\n/)[0] || "Untitled clip";
-  const compact = firstLine.replace(/\s+/g, " ").slice(0, 58);
-
-  if (type === "Command") {
-    if (/rm\s+/.test(firstLine)) return "Clean build output";
-    if (/docker\s+compose\s+down/.test(firstLine)) return "Stop Docker stack";
-    if (/git\s+/.test(firstLine)) return "Git workflow command";
-  }
-
-  return compact;
 }
 
 function createClip(text: string, sourceApplication?: SourceApplication): Clip {
@@ -651,25 +578,6 @@ function createBlockedSensitiveClip(
     sourceAppName: sourceApplication?.name ?? "",
     sourceAppBundleId: sourceApplication?.bundleId ?? "",
   };
-}
-
-function buildDevSearchText(clip: Clip) {
-  const synonyms = DEV_SEARCH_SYNONYMS.filter(([pattern]) =>
-    pattern.test(clip.body),
-  ).map(([, words]) => words);
-
-  return [
-    clip.body,
-    clip.title,
-    clip.vault,
-    clip.type,
-    clip.riskLabel,
-    clip.description,
-    clip.whenToUse,
-    clip.before,
-    clip.risk,
-    ...synonyms,
-  ].join(" ");
 }
 
 function formatRelative(iso?: string) {

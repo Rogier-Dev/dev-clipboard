@@ -9,7 +9,8 @@
     "build:quiet": "tsc && vite build --logLevel warn",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test:risk": "tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --outDir .test-dist --rootDir src src/clipRules.ts && node --test tests/risk-rules.test.mjs"
+    "test:risk": "tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --outDir .test-dist --rootDir src src/clipRules.ts && node --test tests/risk-rules.test.mjs",
+    "test:core": "tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --outDir .test-dist --rootDir src src/clipRules.ts src/clipModel.ts src/searchModel.ts && node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
