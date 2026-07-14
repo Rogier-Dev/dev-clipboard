@@ -71,6 +71,7 @@ type ClipContextMenu = {
   x: number;
   y: number;
 };
+type ClipOperation = "copy" | "delete" | "restore" | "save";
 
 type SearchFilterToken = {
   category: SearchFilterCategory;
@@ -1129,6 +1130,7 @@ function App() {
   const [resultTotal, setResultTotal] = useState(0);
   const [totalClipCount, setTotalClipCount] = useState(0);
   const [status, setStatus] = useState("Opening local SQLite store");
+  const [persistentError, setPersistentError] = useState<string | null>(null);
   const [shortcutStatus] = useState(`Shortcut ready: ${PANEL_SHORTCUT_LABEL}`);
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -1139,6 +1141,9 @@ function App() {
   const [dbReady, setDbReady] = useState(false);
   const [windowFocused, setWindowFocused] = useState(false);
   const [copiedClipId, setCopiedClipId] = useState<string | null>(null);
+  const [clipOperations, setClipOperations] = useState<
+    Record<string, ClipOperation>
+  >({});
   const [pendingRiskCopyId, setPendingRiskCopyId] = useState<string | null>(
     null,
   );
@@ -1200,6 +1205,27 @@ function App() {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const selectedSearchFiltersRef = useRef<HTMLDivElement | null>(null);
   const resolvedTheme = themeMode === "system" ? systemTheme : themeMode;
+
+  function setClipOperation(clipId: string, operation: ClipOperation | null) {
+    setClipOperations((current) => {
+      const next = { ...current };
+      if (operation) {
+        next[clipId] = operation;
+      } else {
+        delete next[clipId];
+      }
+      return next;
+    });
+  }
+
+  function reportStatus(message: string) {
+    setStatus(message);
+  }
+
+  function reportError(message: string) {
+    setPersistentError(message);
+    setStatus(message);
+  }
 
   useEffect(() => {
     window.localStorage.setItem(THEME_STORAGE_KEY, themeMode);
@@ -1511,7 +1537,7 @@ function App() {
           setWindowFocused(payload);
         });
       } catch (error) {
-        setStatus(`Window focus watch failed: ${String(error)}`);
+        reportError(`Window focus watch failed: ${String(error)}`);
       }
     }
 
@@ -1566,7 +1592,7 @@ function App() {
           new LogicalPosition(geometry.visibleX, geometry.visibleY),
         );
       } catch (error) {
-        setStatus(`Floating panel setup failed: ${String(error)}`);
+        reportError(`Floating panel setup failed: ${String(error)}`);
       }
     }
 
@@ -1610,7 +1636,7 @@ function App() {
           ),
         );
       } catch (error) {
-        setStatus(`Panel resize failed: ${String(error)}`);
+        reportError(`Panel resize failed: ${String(error)}`);
       }
     }
 
@@ -1664,7 +1690,7 @@ function App() {
           setStatus(`SQLite ready. Loaded ${rows.length} clips.`);
         }
       } catch (error) {
-        setStatus(`SQLite open failed: ${String(error)}`);
+        reportError(`SQLite open failed: ${String(error)}`);
       }
     }
 
@@ -2282,7 +2308,7 @@ function App() {
         );
         setStatus("Captured clipboard text into SQLite");
       } catch (error) {
-        setStatus(`Clipboard read failed: ${String(error)}`);
+        reportError(`Clipboard read failed: ${String(error)}`);
       }
     }
 
@@ -2307,7 +2333,7 @@ function App() {
     const id = window.setTimeout(() => {
       searchClips(query, selectedVault, selectedSearchFilters).catch(
         (error) => {
-          setStatus(`FTS search failed: ${String(error)}`);
+          reportError(`FTS search failed: ${String(error)}`);
         },
       );
     }, 180);
@@ -2402,12 +2428,14 @@ function App() {
         : clip.body;
 
     try {
+      setClipOperation(clip.id, "copy");
       clearPendingRiskCopy();
       setCopiedClipId(clip.id);
+      reportStatus(`Copying: ${clip.title}`);
       await writeText(copyValue);
       lastWrittenRef.current = copyValue.trim();
       lastSeenRef.current = copyValue.trim();
-      setStatus(
+      reportStatus(
         previewType(clip) === "color"
           ? `Copied ${colorFormatLabel(colorFormat)}: ${copyValue}`
           : `Copied to clipboard: ${clip.title}`,
@@ -2428,19 +2456,23 @@ function App() {
       return true;
     } catch (error) {
       setCopiedClipId(null);
-      setStatus(`Clipboard write failed: ${String(error)}`);
+      reportError(`Clipboard write failed: ${String(error)}`);
       return false;
+    } finally {
+      setClipOperation(clip.id, null);
     }
   }
 
   async function deleteClip(clip: Clip) {
     const db = dbRef.current;
     if (!db) {
-      setStatus("SQLite database is not ready.");
+      reportError("SQLite database is not ready.");
       return;
     }
 
     try {
+      setClipOperation(clip.id, "delete");
+      reportStatus(`Deleting: ${clip.title}`);
       await runTransaction(db, async () => {
         await db.execute("DELETE FROM clip_search WHERE id = $1", [clip.id]);
         await db.execute("DELETE FROM clips WHERE id = $1", [clip.id]);
@@ -2450,14 +2482,18 @@ function App() {
       setTotalClipCount((current) => Math.max(0, current - 1));
       setLastDeletedClip(clip);
       setClipContextMenu(null);
-      setStatus(`Deleted clip: ${clip.title}. Press Command+Z to undo.`);
+      reportStatus(`Deleted clip: ${clip.title}. Press Command+Z to undo.`);
     } catch (error) {
-      setStatus(`Delete failed: ${String(error)}`);
+      reportError(`Delete failed: ${String(error)}`);
+    } finally {
+      setClipOperation(clip.id, null);
     }
   }
 
   async function restoreDeletedClip(clip: Clip) {
     try {
+      setClipOperation(clip.id, "restore");
+      reportStatus(`Restoring: ${clip.title}`);
       await insertClip(clip);
       setClips((current) =>
         [clip, ...current.filter((item) => item.id !== clip.id)].sort(
@@ -2466,9 +2502,11 @@ function App() {
         ),
       );
       setLastDeletedClip(null);
-      setStatus(`Restored clip: ${clip.title}`);
+      reportStatus(`Restored clip: ${clip.title}`);
     } catch (error) {
-      setStatus(`Undo failed: ${String(error)}`);
+      reportError(`Undo failed: ${String(error)}`);
+    } finally {
+      setClipOperation(clip.id, null);
     }
   }
 
@@ -2491,7 +2529,7 @@ function App() {
       setHistoryDeleteOpen(false);
       setStatus("Deleted all clipboard history.");
     } catch (error) {
-      setStatus(`Delete history failed: ${String(error)}`);
+      reportError(`Delete history failed: ${String(error)}`);
     } finally {
       setHistoryDeleting(false);
     }
@@ -2724,15 +2762,19 @@ function App() {
     const label = NOTE_FIELDS[field].label;
 
     if (field === "before" && !nextValue) {
-      setStatus("Before note cannot be empty.");
+      reportError("Before note cannot be empty.");
       return;
     }
 
     try {
+      setClipOperation(clip.id, "save");
+      reportStatus(`Saving ${label}: ${clip.title}`);
       await updateClipNote(clip, field, nextValue);
       cancelNoteEdit();
     } catch (error) {
-      setStatus(`${label} save failed: ${String(error)}`);
+      reportError(`${label} save failed: ${String(error)}`);
+    } finally {
+      setClipOperation(clip.id, null);
     }
   }
 
@@ -2740,10 +2782,14 @@ function App() {
     if (editingClipTextId !== clip.id) return;
 
     try {
+      setClipOperation(clip.id, "save");
+      reportStatus(`Saving clip text: ${clip.title}`);
       await updateClipBody(clip, editingClipTextValue);
       cancelClipTextEdit();
     } catch (error) {
-      setStatus(`Clip text save failed: ${String(error)}`);
+      reportError(`Clip text save failed: ${String(error)}`);
+    } finally {
+      setClipOperation(clip.id, null);
     }
   }
 
@@ -2751,10 +2797,14 @@ function App() {
     if (editingTitleId !== clip.id) return;
 
     try {
+      setClipOperation(clip.id, "save");
+      reportStatus(`Saving title: ${clip.title}`);
       await updateClipTitle(clip, editingTitleValue);
       cancelTitleEdit();
     } catch (error) {
-      setStatus(`Title save failed: ${String(error)}`);
+      reportError(`Title save failed: ${String(error)}`);
+    } finally {
+      setClipOperation(clip.id, null);
     }
   }
 
@@ -2797,7 +2847,13 @@ function App() {
           />
           <div className="noteActions">
             <button
-              className="noteButton primary"
+              className={[
+                "noteButton primary",
+                clipOperations[clip.id] === "save" ? "processing" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              disabled={Boolean(clipOperations[clip.id])}
               onClick={() => saveNoteEdit(clip)}
               type="button"
             >
@@ -3152,6 +3208,19 @@ function App() {
             <Settings size={14} />
           </button>
         </div>
+        {persistentError && (
+          <div className="errorBanner" role="alert">
+            <TriangleAlert size={15} />
+            <span>{persistentError}</span>
+            <button
+              aria-label="Dismiss error"
+              onClick={() => setPersistentError(null)}
+              type="button"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         <header className="topbar" data-tauri-drag-region>
           <div className="navStack">
@@ -3673,7 +3742,15 @@ function App() {
                           />
                           <div className="noteActions">
                             <button
-                              className="noteButton primary"
+                              className={[
+                                "noteButton primary",
+                                clipOperations[clip.id] === "save"
+                                  ? "processing"
+                                  : "",
+                              ]
+                                .filter(Boolean)
+                                .join(" ")}
+                              disabled={Boolean(clipOperations[clip.id])}
                               onClick={() => saveTitleEdit(clip)}
                               title="Save title"
                               type="button"
@@ -3726,6 +3803,9 @@ function App() {
                         className={[
                           "copyButton",
                           copiedClipId === clip.id ? "copied" : "",
+                          clipOperations[clip.id] === "copy"
+                            ? "processing"
+                            : "",
                           pendingRiskCopyId === clip.id
                             ? "confirmingRiskCopy"
                             : "",
@@ -3733,6 +3813,7 @@ function App() {
                           .filter(Boolean)
                           .join(" ")}
                         onClick={() => copyClip(clip)}
+                        disabled={Boolean(clipOperations[clip.id])}
                         type="button"
                       >
                         {copiedClipId === clip.id ? (
@@ -3769,6 +3850,7 @@ function App() {
                         <button
                           className="deleteClipButton"
                           onClick={() => deleteClip(clip)}
+                          disabled={Boolean(clipOperations[clip.id])}
                           title={`Delete ${clip.title}`}
                           type="button"
                         >
@@ -3803,7 +3885,14 @@ function App() {
                         />
                         <div className="noteActions">
                           <button
-                            className="noteButton primary"
+                            className={[
+                              "noteButton primary",
+                              clipOperations[clip.id] === "save"
+                                ? "processing"
+                                : "",
+                            ]
+                              .filter(Boolean)
+                              .join(" ")}
                             onClick={() => saveClipTextEdit(clip)}
                             type="button"
                           >
@@ -4364,7 +4453,7 @@ function App() {
                         <strong>Launch at login</strong>
                         <p>Open Dev Clipboard automatically after sign in.</p>
                       </div>
-                      <span className="mockToggle">Off</span>
+                      <span className="futurePill">Future</span>
                     </div>
                     <div className="settingRow">
                       <div>
@@ -4373,7 +4462,7 @@ function App() {
                           Keep quick access available outside the main window.
                         </p>
                       </div>
-                      <span className="mockToggle on">On</span>
+                      <span className="futurePill">Future</span>
                     </div>
                   </div>
                 </section>
@@ -4386,24 +4475,24 @@ function App() {
                         <strong>Ignore Dev Clipboard copies</strong>
                         <p>Copies made inside this app are not saved again.</p>
                       </div>
-                      <span className="mockToggle on">On</span>
+                      <span className="mockValue">Fixed</span>
                     </div>
                     <div className="settingRow">
                       <div>
                         <strong>Automatic capture</strong>
                         <p>Save clipboard changes from other apps.</p>
                       </div>
-                      <span className="mockToggle on">On</span>
+                      <span className="mockValue">Fixed</span>
                     </div>
                     <div className="settingRow">
                       <div>
                         <strong>Secret blocking</strong>
                         <p>
-                          Obvious private keys, tokens, and password
-                          assignments are not saved.
+                          Obvious private keys, tokens, and password assignments
+                          create a risk note without saving the secret text.
                         </p>
                       </div>
-                      <span className="mockToggle on">On</span>
+                      <span className="mockValue">Fixed</span>
                     </div>
                     <div className="settingRow muted">
                       <div>
@@ -4507,7 +4596,7 @@ function App() {
                     <div className="settingRow">
                       <div>
                         <strong>Retention</strong>
-                        <p>Auto-delete old or unused clips after review.</p>
+                        <p>Review clips are kept. History cleanup is manual.</p>
                       </div>
                       <span className="mockValue">Manual</span>
                     </div>
@@ -4543,7 +4632,7 @@ function App() {
                         <strong>Terminal review rules</strong>
                         <p>Require review for destructive commands.</p>
                       </div>
-                      <span className="mockToggle on">On</span>
+                      <span className="mockValue">Fixed</span>
                     </div>
                     <div className="ruleList">
                       <span>rm -rf</span>
@@ -4602,13 +4691,7 @@ function App() {
                         <strong>Code block theme</strong>
                         <p>Apply a familiar editor-like syntax theme.</p>
                       </div>
-                      <div className="segmented">
-                        <button className="active" type="button">
-                          Cursor Dark
-                        </button>
-                        <button type="button">VS Code</button>
-                        <button type="button">GitHub</button>
-                      </div>
+                      <span className="mockValue">GitHub Dark</span>
                     </div>
                   </div>
                 </section>
@@ -4682,7 +4765,9 @@ function App() {
                       <button
                         onClick={() => {
                           addDevelopmentDemoClips().catch((error) =>
-                            setStatus(`Demo insert failed: ${String(error)}`),
+                            reportError(
+                              `Demo insert failed: ${String(error)}`,
+                            ),
                           );
                         }}
                         type="button"
@@ -4693,7 +4778,9 @@ function App() {
                         className="danger"
                         onClick={() => {
                           removeDevelopmentDemoClips().catch((error) =>
-                            setStatus(`Demo removal failed: ${String(error)}`),
+                            reportError(
+                              `Demo removal failed: ${String(error)}`,
+                            ),
                           );
                         }}
                         type="button"
