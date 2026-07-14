@@ -71,7 +71,7 @@ Status:
 
 - [~] `App.tsx` の分類、DB、表示責務を分割し、テスト可能な純粋関数へ切り出す。分類・タイトル・行数/トークン見積もり・検索メタ情報は `clipModel.ts` / `searchModel.ts` に分離済み。DB責務と表示責務の追加分割が残る。
 - [~] コアフローの自動テストを追加する。分類、Risk、検索用テキスト、タイトル生成は `npm run test:core` で検証する。色変換と主要UIフローのテストが残る。
-- [ ] 手動QAチェックリストを作り、Dark / Light × Compact / Normal / Largeで実施する。
+- [~] 手動QAチェックリストを作成済み。`MANUAL_QA_CHECKLIST.md` に Dark / Light × Compact / Normal / Large、主要フロー、視覚崩れ、失敗表示、配布前Smoke Testを整理した。実施結果の記入が残る。
 - [ ] 長い英数字、日本語、複数行、URL、色、コマンドで横overflowと重なりがないことを確認する。
 - [ ] Tauriの配布用ビルドを作成し、アプリ名、identifier、アイコン、バージョン、権限表示をMVP用に確定する。
 - [ ] macOS署名・Notarizationを行うか、テスト配布方法を明文化する。

@@ -132,3 +132,4 @@ npm run test:risk
 - `src-tauri/capabilities/default.json` — Tauri permissions for clipboard, SQL, window controls, and global shortcut.
 - `SPIKE.md` — detailed spike status and next steps.
 - `MVP_CHECKLIST.md` — authoritative MVP blockers, acceptance criteria, completion gate, and out-of-scope items.
+- `MANUAL_QA_CHECKLIST.md` — real-device MVP QA matrix for themes, card sizes, clipboard flow, search, editing, and release smoke tests.
