@@ -40,7 +40,7 @@ Status:
 | --- | --- | --- | --- | --- |
 | [x] | Capture | 外部アプリで `hello dev clipboard` をコピー | 1.4秒程度で新規カードが追加される | 2026-07-15 `hello dev clipboard 4` で追加確認。SQLite locked解消後にOK |
 | [ ] | Source app | Finderでファイルパスをコピー | Source appがFinder系として保存される | |
-| [ ] | Internal copy guard | Dev Clipboard内のCopyボタンを押す | コピー先として使われるが、新規カードは増えない | |
+| [x] | Internal copy guard | Dev Clipboard内のCopyボタンを押す | コピー先として使われるが、新規カードは増えない | 2026-07-15 重複カードなし、use count増加、`Copied to clipboard: Internal copy guard` 表示、エラーなし |
 | [ ] | Duplicate | 同じ本文を連続コピー | 重複保存方針どおりに扱われ、UIが破綻しない | |
 | [ ] | Long text | 1000文字以上の本文をコピー | カードが表示され、縦スクロールできる | |
 | [ ] | Japanese | 日本語文をコピー | 文字化けせず、検索できる | |
