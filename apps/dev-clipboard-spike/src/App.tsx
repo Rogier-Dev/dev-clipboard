@@ -7,7 +7,11 @@ import {
   LogicalPosition,
   LogicalSize,
 } from "@tauri-apps/api/window";
-import { codeToHtml } from "shiki";
+import {
+  createBundledHighlighter,
+  createSingletonShorthands,
+} from "@shikijs/core";
+import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
 import {
   ArrowDownUp,
   Check,
@@ -135,6 +139,48 @@ const THEME_OPTIONS: Array<{ label: string; value: ThemeMode }> = [
 ];
 
 const THEME_STORAGE_KEY = "dev-clipboard-theme-mode";
+const CARD_SIZE_STORAGE_KEY = "dev-clipboard-card-size";
+const SHIKI_THEME = "github-dark" as const;
+const SHIKI_LANGUAGES = [
+  "bash",
+  "shellscript",
+  "typescript",
+  "tsx",
+  "javascript",
+  "json",
+  "markdown",
+  "html",
+  "css",
+  "sql",
+  "dotenv",
+  "diff",
+] as const;
+type ShikiLanguage = (typeof SHIKI_LANGUAGES)[number];
+
+const createDevClipboardHighlighter = createBundledHighlighter({
+  langs: {
+    bash: () => import("@shikijs/langs/bash"),
+    shellscript: () => import("@shikijs/langs/shellscript"),
+    typescript: () => import("@shikijs/langs/typescript"),
+    tsx: () => import("@shikijs/langs/tsx"),
+    javascript: () => import("@shikijs/langs/javascript"),
+    json: () => import("@shikijs/langs/json"),
+    markdown: () => import("@shikijs/langs/markdown"),
+    html: () => import("@shikijs/langs/html"),
+    css: () => import("@shikijs/langs/css"),
+    sql: () => import("@shikijs/langs/sql"),
+    dotenv: () => import("@shikijs/langs/dotenv"),
+    diff: () => import("@shikijs/langs/diff"),
+  },
+  themes: {
+    [SHIKI_THEME]: () => import("@shikijs/themes/github-dark"),
+  },
+  engine: () => createJavaScriptRegexEngine(),
+});
+
+const { codeToHtml: codeToHtmlLimited } = createSingletonShorthands(
+  createDevClipboardHighlighter,
+);
 
 function getTauriWindow() {
   try {
@@ -153,6 +199,12 @@ function readStoredThemeMode(): ThemeMode {
   return "system";
 }
 
+function readStoredCardSize(): CardSize {
+  if (typeof window === "undefined") return "normal";
+  const stored = window.localStorage.getItem(CARD_SIZE_STORAGE_KEY);
+  return stored === "compact" || stored === "large" ? stored : "normal";
+}
+
 const DEMO_HEAVY_CLIPS: Clip[] = [
   {
     id: "demo-review-command-20260701",
@@ -163,8 +215,10 @@ const DEMO_HEAVY_CLIPS: Clip[] = [
     risk: "check",
     riskLabel: "Review",
     description: "Mock command that may change local dependencies.",
-    whenToUse: "When installing packages after checking package.json and lockfile changes.",
-    before: "Confirm the project directory and review the package source first.",
+    whenToUse:
+      "When installing packages after checking package.json and lockfile changes.",
+    before:
+      "Confirm the project directory and review the package source first.",
     createdAt: "2026-07-01T03:14:30.000Z",
     useCount: 0,
     charCount: 11,
@@ -180,8 +234,10 @@ const DEMO_HEAVY_CLIPS: Clip[] = [
     risk: "destructive",
     riskLabel: "Risk",
     description: "Mock destructive command used to check risk card styling.",
-    whenToUse: "Only when cleaning generated build output in the confirmed project directory.",
-    before: "Run pwd and ls dist first. Confirm the target path is not empty or sensitive.",
+    whenToUse:
+      "Only when cleaning generated build output in the confirmed project directory.",
+    before:
+      "Run pwd and ls dist first. Confirm the target path is not empty or sensitive.",
     createdAt: "2026-07-01T03:14:00.000Z",
     useCount: 0,
     charCount: 11,
@@ -218,7 +274,8 @@ Estimated data size: 3.4 MB`,
     riskLabel: "Safe",
     description: "Mock PDF document used to check document preview cards.",
     whenToUse: "When keeping a reference document near AI planning work.",
-    before: "Use a page summary or selected quote instead of pasting the whole PDF.",
+    before:
+      "Use a page summary or selected quote instead of pasting the whole PDF.",
     createdAt: "2026-07-01T03:12:00.000Z",
     useCount: 0,
     charCount: 1100,
@@ -234,7 +291,8 @@ Estimated data size: 3.4 MB`,
     risk: "safe",
     riskLabel: "Safe",
     description: "Mock copied file reference from Finder.",
-    whenToUse: "When reusing a local design source or attaching context to a task.",
+    whenToUse:
+      "When reusing a local design source or attaching context to a task.",
     before: "Confirm the file path is still valid before sharing.",
     createdAt: "2026-07-01T03:11:00.000Z",
     useCount: 0,
@@ -251,7 +309,8 @@ Estimated data size: 3.4 MB`,
     risk: "safe",
     riskLabel: "Safe",
     description: "Mock copied documentation URL.",
-    whenToUse: "When keeping an external reference close to a prompt or implementation task.",
+    whenToUse:
+      "When keeping an external reference close to a prompt or implementation task.",
     before: "Open in browser when the local vault does not explain the topic.",
     createdAt: "2026-07-01T03:10:00.000Z",
     useCount: 0,
@@ -271,8 +330,10 @@ Estimated data size: 3.4 MB`,
     risk: "safe",
     riskLabel: "Safe",
     description: "Mock SVG asset copied from a design or codebase.",
-    whenToUse: "When reusing an icon while checking its dimensions and fill colors.",
-    before: "Confirm license/source and remove unnecessary attributes before pasting into code.",
+    whenToUse:
+      "When reusing an icon while checking its dimensions and fill colors.",
+    before:
+      "Confirm license/source and remove unnecessary attributes before pasting into code.",
     createdAt: "2026-07-01T03:09:00.000Z",
     useCount: 0,
     charCount: 248,
@@ -292,8 +353,10 @@ Estimated data size: 42.3 MB`,
     risk: "safe",
     riskLabel: "Safe",
     description: "Mock screen recording stored as a heavy clipboard item.",
-    whenToUse: "When reviewing an interaction or animation before turning it into notes.",
-    before: "Consider saving a file reference instead of keeping the full payload in history.",
+    whenToUse:
+      "When reviewing an interaction or animation before turning it into notes.",
+    before:
+      "Consider saving a file reference instead of keeping the full payload in history.",
     createdAt: "2026-07-01T03:08:00.000Z",
     useCount: 0,
     charCount: 1200,
@@ -311,7 +374,8 @@ Estimated data size: 2.1 MB`,
     type: "Audio",
     risk: "safe",
     riskLabel: "Safe",
-    description: "Mock audio clip that may later become a transcription source.",
+    description:
+      "Mock audio clip that may later become a transcription source.",
     whenToUse: "When storing short spoken context alongside AI notes.",
     before: "Transcribe or summarize before sending to AI when possible.",
     createdAt: "2026-07-01T03:07:00.000Z",
@@ -381,7 +445,8 @@ Mock image clip for checking data-size tags and future crop/cleanup behavior.`,
     risk: "safe",
     riskLabel: "Safe",
     description: "Mock image clip used to check large asset handling.",
-    whenToUse: "When deciding whether an image clip should be stored or cleaned up.",
+    whenToUse:
+      "When deciding whether an image clip should be stored or cleaned up.",
     before: "Crop unnecessary whitespace before reusing as a design asset.",
     createdAt: "2026-06-30T02:58:00.000Z",
     useCount: 0,
@@ -403,8 +468,14 @@ const DEV_SEARCH_SYNONYMS: Array<[RegExp, string]> = [
   [/\bgit\s+reset\s+--hard\b/i, "変更破棄 git履歴 作業ツリー reset hard"],
   [/\bgit\s+clean\b/i, "未追跡ファイル削除 clean untracked"],
   [/\bsudo\b/i, "管理者権限 privilege 権限 root"],
-  [/\bcurl\b.*\|\s*(sh|bash)/i, "remote script リモートスクリプト pipe install"],
-  [/\.env|token|secret|password|id_rsa/i, "機密情報 secret token password env 秘密鍵"],
+  [
+    /\bcurl\b.*\|\s*(sh|bash)/i,
+    "remote script リモートスクリプト pipe install",
+  ],
+  [
+    /\.env|token|secret|password|id_rsa/i,
+    "機密情報 secret token password env 秘密鍵",
+  ],
 ];
 
 function createId() {
@@ -430,9 +501,7 @@ function detectVault(text: string): Vault {
     return "Terminal";
   }
 
-  if (
-    /```|^#\s|prompt|system:|user:|assistant:|要約|レビュー/i.test(trimmed)
-  ) {
+  if (/```|^#\s|prompt|system:|user:|assistant:|要約|レビュー/i.test(trimmed)) {
     return "Chat";
   }
 
@@ -455,21 +524,31 @@ function detectType(text: string, vault: Vault) {
   return "Text";
 }
 
-function detectLanguage(clip: Clip) {
+function detectLanguage(clip: Clip): ShikiLanguage {
   const body = clip.body.trim();
 
   if (clip.vault === "Terminal") return "bash";
+  if (/\.env|^[A-Z_]+=/m.test(body)) return "dotenv";
+  if (/^diff --git\b|^[-+]{3}\s/m.test(body)) return "diff";
   if (/tsx|jsx|React|use[A-Z]/.test(body)) return "tsx";
   if (/<\/?[a-z][\s\S]*>/i.test(body)) return "html";
   if (/^\s*[{[]/.test(body)) return "json";
   if (/^#|```|\n[-*]\s/.test(body)) return "markdown";
   if (/\bSELECT\b|\bFROM\b|\bWHERE\b/i.test(body)) return "sql";
-  if (/[{};]/.test(body)) return "ts";
+  if (/[{};]/.test(body)) return "typescript";
 
-  return "text";
+  return "markdown";
 }
 
-function classifyRisk(text: string): Pick<Clip, "risk" | "riskLabel" | "before"> {
+function shouldHighlightClip(clip: Clip) {
+  return ["command", "code", "markdown", "svg", "text"].includes(
+    previewType(clip),
+  );
+}
+
+function classifyRisk(
+  text: string,
+): Pick<Clip, "risk" | "riskLabel" | "before"> {
   const trimmed = text.trim();
 
   if (/docker\s+compose\s+down\b.*--volumes/.test(trimmed)) {
@@ -500,7 +579,8 @@ function classifyRisk(text: string): Pick<Clip, "risk" | "riskLabel" | "before">
     return {
       risk: "check",
       riskLabel: "Sensitive path",
-      before: "Confirm source, destination, and whether secrets should be copied.",
+      before:
+        "Confirm source, destination, and whether secrets should be copied.",
     };
   }
 
@@ -598,22 +678,31 @@ function clipUsedText(clip: Clip) {
   return `Used ${clip.useCount} times · ${formatRelative(clip.lastUsedAt)}`;
 }
 
-function detectMatchField(clip: Clip, query: string) {
-  const q = query.trim().toLowerCase();
-  if (!q) return undefined;
+function searchTerms(query: string) {
+  return query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+}
 
+function valueMatchesQuery(value: string, query: string) {
+  const terms = searchTerms(query);
+  if (terms.length === 0) return false;
+
+  const normalized = value.toLowerCase();
+  return terms.every((term) => normalized.includes(term));
+}
+
+function detectMatchField(clip: Clip, query: string) {
   const fields = [
     ["Body", clip.body],
     ["Title", clip.title],
     ["Description", clip.description],
     ["When to use", clip.whenToUse],
-    ["Risk", clip.riskLabel],
+    ["Risk", `${clip.risk} ${clip.riskLabel} ${riskDisplayLabel(clip.risk)}`],
     ["Before", clip.before],
     ["Type", clip.type],
     ["Vault", clip.vault],
   ] as const;
 
-  return fields.find(([, value]) => value.toLowerCase().includes(q))?.[0];
+  return fields.find(([, value]) => valueMatchesQuery(value, query))?.[0];
 }
 
 function detectMatchReason(clip: Clip, query: string) {
@@ -642,15 +731,31 @@ function previewType(clip: Clip) {
 }
 
 function shouldUseRichPreview(clip: Clip) {
-  return ["image", "illustrator", "svg", "audio", "video", "url", "file", "pdf", "color"].includes(
-    previewType(clip),
-  );
+  return [
+    "image",
+    "illustrator",
+    "svg",
+    "audio",
+    "video",
+    "url",
+    "file",
+    "pdf",
+    "color",
+  ].includes(previewType(clip));
 }
 
 function isMediaPreviewClip(clip: Clip) {
-  return ["image", "illustrator", "svg", "audio", "video", "url", "file", "pdf", "color"].includes(
-    previewType(clip),
-  );
+  return [
+    "image",
+    "illustrator",
+    "svg",
+    "audio",
+    "video",
+    "url",
+    "file",
+    "pdf",
+    "color",
+  ].includes(previewType(clip));
 }
 
 function canEditClipText(clip: Clip) {
@@ -684,17 +789,28 @@ function visibleNoteFields(clip: Clip): NoteField[] {
 function sourceApp(clip: Clip) {
   const type = previewType(clip);
 
-  if (type === "illustrator") return { label: "Ai", name: "Illustrator", className: "source-ai" };
-  if (clip.body.includes(".fig")) return { label: "Fg", name: "Figma", className: "source-figma" };
-  if (type === "url") return { label: "Ch", name: "Chrome", className: "source-chrome" };
-  if (type === "pdf") return { label: "Pr", name: "Preview", className: "source-preview" };
-  if (type === "file") return { label: "Fi", name: "Finder", className: "source-finder" };
-  if (type === "audio") return { label: "Vm", name: "Voice Memos", className: "source-voice" };
-  if (type === "video") return { label: "Qt", name: "QuickTime", className: "source-quicktime" };
-  if (type === "image") return { label: "Sc", name: "Screenshot", className: "source-screenshot" };
-  if (["code", "markdown", "svg"].includes(type)) return { label: "Cu", name: "Cursor", className: "source-cursor" };
-  if (type === "color") return { label: "Fg", name: "Figma", className: "source-figma" };
-  if (type === "text") return { label: "Tx", name: "TextEdit", className: "source-textedit" };
+  if (type === "illustrator")
+    return { label: "Ai", name: "Illustrator", className: "source-ai" };
+  if (clip.body.includes(".fig"))
+    return { label: "Fg", name: "Figma", className: "source-figma" };
+  if (type === "url")
+    return { label: "Ch", name: "Chrome", className: "source-chrome" };
+  if (type === "pdf")
+    return { label: "Pr", name: "Preview", className: "source-preview" };
+  if (type === "file")
+    return { label: "Fi", name: "Finder", className: "source-finder" };
+  if (type === "audio")
+    return { label: "Vm", name: "Voice Memos", className: "source-voice" };
+  if (type === "video")
+    return { label: "Qt", name: "QuickTime", className: "source-quicktime" };
+  if (type === "image")
+    return { label: "Sc", name: "Screenshot", className: "source-screenshot" };
+  if (["code", "markdown", "svg"].includes(type))
+    return { label: "Cu", name: "Cursor", className: "source-cursor" };
+  if (type === "color")
+    return { label: "Fg", name: "Figma", className: "source-figma" };
+  if (type === "text")
+    return { label: "Tx", name: "TextEdit", className: "source-textedit" };
 
   return { label: "Dc", name: "Dev Clipboard", className: "source-dev" };
 }
@@ -703,7 +819,9 @@ function PreviewMeta({ items }: { items: string[] }) {
   return (
     <div className="previewMeta">
       {items.map((item) => (
-        <span className="previewMetaItem" key={item}>{item}</span>
+        <span className="previewMetaItem" key={item}>
+          {item}
+        </span>
       ))}
     </div>
   );
@@ -795,7 +913,8 @@ function FilterIcon({ type }: { type: string }) {
   if (normalized === "color") return <Palette size={12} />;
   if (normalized === "image") return <ImageIcon size={12} />;
   if (normalized === "svg") return <FileCode2 size={12} />;
-  if (normalized === "illustrator" || normalized === "vector") return <PenTool size={12} />;
+  if (normalized === "illustrator" || normalized === "vector")
+    return <PenTool size={12} />;
   if (normalized === "pdf") return <FileText size={12} />;
   if (normalized === "file") return <FolderOpen size={12} />;
   if (normalized === "audio") return <AudioLines size={12} />;
@@ -826,15 +945,12 @@ function matchesSearchFilters(clip: Clip, filters: SearchFilterToken[]) {
   const type = previewType(clip);
   const source = sourceApp(clip).name.toLowerCase();
   const riskValue =
-    clip.risk === "safe"
-      ? "safe"
-      : clip.risk === "check"
-        ? "review"
-        : "risk";
+    clip.risk === "safe" ? "safe" : clip.risk === "check" ? "review" : "risk";
 
   return (
     (groups.Safety.length === 0 || groups.Safety.includes(riskValue)) &&
-    (groups.Vault.length === 0 || groups.Vault.includes(clip.vault.toLowerCase())) &&
+    (groups.Vault.length === 0 ||
+      groups.Vault.includes(clip.vault.toLowerCase())) &&
     (groups.Type.length === 0 || groups.Type.includes(type)) &&
     (groups.Media.length === 0 || groups.Media.includes(type)) &&
     (groups.App.length === 0 || groups.App.includes(source))
@@ -926,7 +1042,10 @@ function extraMetaTags(clip: Clip) {
   const tags: Array<{ className: string; label: string }> = [];
 
   if (clip.tokenEstimate >= 10000) {
-    tags.push({ className: "weightTag weightTag-token", label: "AI cost High" });
+    tags.push({
+      className: "weightTag weightTag-token",
+      label: "AI cost High",
+    });
   }
 
   if (clip.id === "demo-illustrator-data-20260630") {
@@ -959,20 +1078,20 @@ function extraMetaTags(clip: Clip) {
   }
 
   if (clip.id === "demo-file-reference-20260701") {
-      tags.push({ className: "weightTag weightTag-rich", label: "Figma" });
-      tags.push({ className: "weightTag weightTag-rich", label: ".fig" });
-      tags.push({ className: "weightTag weightTag-rich", label: "Local path" });
+    tags.push({ className: "weightTag weightTag-rich", label: "Figma" });
+    tags.push({ className: "weightTag weightTag-rich", label: ".fig" });
+    tags.push({ className: "weightTag weightTag-rich", label: "Local path" });
   }
 
   return tags;
 }
 
+const PANEL_SHORTCUT_LABEL = "⌘ ⌥ V";
+
 function App() {
   const [clips, setClips] = useState<Clip[]>([]);
   const [status, setStatus] = useState("Opening local SQLite store");
-  const [shortcutStatus] = useState(
-    "Shortcut ready: CommandOrControl+Alt+V",
-  );
+  const [shortcutStatus] = useState(`Shortcut ready: ${PANEL_SHORTCUT_LABEL}`);
   const [query, setQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -985,9 +1104,9 @@ function App() {
   const [colorFormatsByClip, setColorFormatsByClip] = useState<
     Record<string, ColorFormat>
   >({});
-  const [highlightedCode, setHighlightedCode] = useState<Record<string, string>>(
-    {},
-  );
+  const [highlightedCode, setHighlightedCode] = useState<
+    Record<string, string>
+  >({});
   const [editingNote, setEditingNote] = useState<{
     clipId: string;
     field: NoteField;
@@ -1011,7 +1130,7 @@ function App() {
   const [expandedDetails, setExpandedDetails] = useState<Set<string>>(
     () => new Set(),
   );
-  const [cardSize, setCardSize] = useState<CardSize>("normal");
+  const [cardSize, setCardSize] = useState<CardSize>(readStoredCardSize);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [clipContextMenu, setClipContextMenu] =
     useState<ClipContextMenu | null>(null);
@@ -1038,6 +1157,10 @@ function App() {
   }, [themeMode]);
 
   useEffect(() => {
+    window.localStorage.setItem(CARD_SIZE_STORAGE_KEY, cardSize);
+  }, [cardSize]);
+
+  useEffect(() => {
     if (!window.matchMedia) return;
     const media = window.matchMedia("(prefers-color-scheme: light)");
     const syncSystemTheme = () => {
@@ -1058,7 +1181,9 @@ function App() {
   function toggleSearchFilter(filter: SearchFilterToken) {
     setSelectedSearchFilters((current) =>
       current.some((selected) => filterKey(selected) === filterKey(filter))
-        ? current.filter((selected) => filterKey(selected) !== filterKey(filter))
+        ? current.filter(
+            (selected) => filterKey(selected) !== filterKey(filter),
+          )
         : [...current, filter],
     );
   }
@@ -1094,7 +1219,9 @@ function App() {
 
     if (filter.category === "Vault") {
       return (
-        <span className={`searchToken vaultTag vaultTag-${filter.label.toLowerCase()}`}>
+        <span
+          className={`searchToken vaultTag vaultTag-${filter.label.toLowerCase()}`}
+        >
           <VaultBadgeIcon vault={filter.label as Vault} />
           <span className="tagLabel">{filter.label}</span>
         </span>
@@ -1152,10 +1279,12 @@ function App() {
     async function highlightClips() {
       const entries = await Promise.all(
         clips.map(async (clip) => {
+          if (!shouldHighlightClip(clip)) return [clip.id, ""] as const;
+
           try {
-            const html = await codeToHtml(clip.body, {
+            const html = await codeToHtmlLimited(clip.body, {
               lang: detectLanguage(clip),
-              theme: "github-dark",
+              theme: SHIKI_THEME,
             });
             return [clip.id, html] as const;
           } catch {
@@ -1321,7 +1450,10 @@ function App() {
         monitor.scaleFactor,
       );
       const workAreaSize = monitor.workArea.size.toLogical(monitor.scaleFactor);
-      const height = Math.max(520, workAreaSize.height - PANEL_VERTICAL_PADDING * 2);
+      const height = Math.max(
+        520,
+        workAreaSize.height - PANEL_VERTICAL_PADDING * 2,
+      );
 
       return {
         height,
@@ -1373,7 +1505,9 @@ function App() {
         const workAreaPosition = monitor.workArea.position.toLogical(
           monitor.scaleFactor,
         );
-        const workAreaSize = monitor.workArea.size.toLogical(monitor.scaleFactor);
+        const workAreaSize = monitor.workArea.size.toLogical(
+          monitor.scaleFactor,
+        );
         const height = Math.max(
           520,
           workAreaSize.height - PANEL_VERTICAL_PADDING * 2,
@@ -1645,11 +1779,7 @@ function App() {
     }
   }
 
-  async function updateClipNote(
-    clip: Clip,
-    field: NoteField,
-    value: string,
-  ) {
+  async function updateClipNote(clip: Clip, field: NoteField, value: string) {
     const db = dbRef.current;
     if (!db) {
       throw new Error("SQLite database is not ready");
@@ -1663,10 +1793,10 @@ function App() {
     };
     const column = NOTE_FIELDS[field].dbColumn;
 
-    await db.execute(
-      `UPDATE clips SET ${column} = $1 WHERE id = $2`,
-      [value, clip.id],
-    );
+    await db.execute(`UPDATE clips SET ${column} = $1 WHERE id = $2`, [
+      value,
+      clip.id,
+    ]);
     await upsertSearchIndex(updatedClip, db);
 
     setClips((current) =>
@@ -1959,9 +2089,11 @@ function App() {
     if (!dbReady) return;
 
     const id = window.setTimeout(() => {
-      searchClips(query, selectedVault, selectedSearchFilters).catch((error) => {
-        setStatus(`FTS search failed: ${String(error)}`);
-      });
+      searchClips(query, selectedVault, selectedSearchFilters).catch(
+        (error) => {
+          setStatus(`FTS search failed: ${String(error)}`);
+        },
+      );
     }, 180);
 
     return () => window.clearTimeout(id);
@@ -2091,10 +2223,7 @@ function App() {
     }
   }
 
-  function openClipContextMenu(
-    event: MouseEvent<HTMLElement>,
-    clip: Clip,
-  ) {
+  function openClipContextMenu(event: MouseEvent<HTMLElement>, clip: Clip) {
     event.preventDefault();
     const menuWidth = 250;
     const menuHeight = 300;
@@ -2268,7 +2397,8 @@ function App() {
         },
         {
           label: "Variables",
-          value: "`query`, `SearchIcon`, and `.empty-state` must match the target project.",
+          value:
+            "`query`, `SearchIcon`, and `.empty-state` must match the target project.",
         },
       );
     }
@@ -2277,11 +2407,13 @@ function App() {
       rows.push(
         {
           label: "Risk breakdown",
-          value: "`rm -rf node_modules dist` recursively deletes local folders before reinstalling dependencies.",
+          value:
+            "`rm -rf node_modules dist` recursively deletes local folders before reinstalling dependencies.",
         },
         {
           label: "Variables",
-          value: "`node_modules` and `dist` are the delete targets. Run only from the project root.",
+          value:
+            "`node_modules` and `dist` are the delete targets. Run only from the project root.",
         },
       );
     }
@@ -2395,10 +2527,7 @@ function App() {
     }
 
     return (
-      <div
-        className={value ? "noteLine" : "noteLine emptyNote"}
-        key={field}
-      >
+      <div className={value ? "noteLine" : "noteLine emptyNote"} key={field}>
         <p>
           <span className="noteLabel">{label}:</span>{" "}
           <span className="noteValue">
@@ -2441,7 +2570,12 @@ function App() {
           <div className="richPreviewText">
             <span className="previewTitle">Web reference</span>
             <PreviewMeta items={[domain, "URL"]} />
-            <a className="previewDescription urlText" href={clip.body} rel="noreferrer" target="_blank">
+            <a
+              className="previewDescription urlText"
+              href={clip.body}
+              rel="noreferrer"
+              target="_blank"
+            >
               {highlightQuery(clip.body, query)}
             </a>
           </div>
@@ -2474,7 +2608,11 @@ function App() {
                 }
                 type="button"
               >
-                {activeFormat === "hex" ? <Check size={11} /> : <RefreshCw size={11} />}
+                {activeFormat === "hex" ? (
+                  <Check size={11} />
+                ) : (
+                  <RefreshCw size={11} />
+                )}
                 HEX {colorDisplayValue(clip, "hex")}
               </button>
               <button
@@ -2488,7 +2626,11 @@ function App() {
                 }
                 type="button"
               >
-                {activeFormat === "rgb" ? <Check size={11} /> : <RefreshCw size={11} />}
+                {activeFormat === "rgb" ? (
+                  <Check size={11} />
+                ) : (
+                  <RefreshCw size={11} />
+                )}
                 RGB 54, 197, 240
               </button>
               <button
@@ -2502,7 +2644,11 @@ function App() {
                 }
                 type="button"
               >
-                {activeFormat === "hsl" ? <Check size={11} /> : <RefreshCw size={11} />}
+                {activeFormat === "hsl" ? (
+                  <Check size={11} />
+                ) : (
+                  <RefreshCw size={11} />
+                )}
                 HSL 194, 86%, 58%
               </button>
               <button
@@ -2516,7 +2662,11 @@ function App() {
                 }
                 type="button"
               >
-                {activeFormat === "rgba" ? <Check size={11} /> : <RefreshCw size={11} />}
+                {activeFormat === "rgba" ? (
+                  <Check size={11} />
+                ) : (
+                  <RefreshCw size={11} />
+                )}
                 RGBA alpha
               </button>
             </div>
@@ -2535,7 +2685,9 @@ function App() {
             <span>{isFigmaFile ? ".fig" : "FILE"}</span>
           </div>
           <div className="richPreviewText">
-            <span className="previewTitle">{clip.body.split("/").pop() || "Local file"}</span>
+            <span className="previewTitle">
+              {clip.body.split("/").pop() || "Local file"}
+            </span>
             <PreviewMeta
               items={
                 isFigmaFile
@@ -2543,7 +2695,9 @@ function App() {
                   : ["File", "Local path"]
               }
             />
-            <p className="previewDescription">{highlightQuery(clip.body, query)}</p>
+            <p className="previewDescription">
+              {highlightQuery(clip.body, query)}
+            </p>
           </div>
         </div>
       );
@@ -2559,7 +2713,10 @@ function App() {
           <div className="richPreviewText">
             <span className="previewTitle">Dev-Clipboard-Requirements.pdf</span>
             <PreviewMeta items={["PDF", "18 pages", "3.4 MB"]} />
-            <p className="previewDescription">Document preview. Use summary or page selection before sending to AI.</p>
+            <p className="previewDescription">
+              Document preview. Use summary or page selection before sending to
+              AI.
+            </p>
           </div>
         </div>
       );
@@ -2576,7 +2733,9 @@ function App() {
           <div className="richPreviewText">
             <span className="previewTitle">Screenshot image preview</span>
             <PreviewMeta items={["PNG", "2880 x 1800", "8.6 MB"]} />
-            <p className="previewDescription">Image preview stored as a lightweight visual reference.</p>
+            <p className="previewDescription">
+              Image preview stored as a lightweight visual reference.
+            </p>
           </div>
         </div>
       );
@@ -2592,7 +2751,9 @@ function App() {
           <div className="richPreviewText">
             <span className="previewTitle">SVG icon asset</span>
             <PreviewMeta items={["SVG", "Vector", "Editable code"]} />
-            <p className="previewDescription">Preview the icon shape and keep the raw SVG available below.</p>
+            <p className="previewDescription">
+              Preview the icon shape and keep the raw SVG available below.
+            </p>
           </div>
         </div>
       );
@@ -2608,9 +2769,14 @@ function App() {
             <div className="artShape secondaryShape" />
           </div>
           <div className="richPreviewText">
-            <span className="previewTitle">Vector artwork + embedded preview</span>
+            <span className="previewTitle">
+              Vector artwork + embedded preview
+            </span>
             <PreviewMeta items={["Illustrator", "Rich data", "24.8 MB"]} />
-            <p className="previewDescription">Heavy rich data. Prefer a preview or file reference for long-term storage.</p>
+            <p className="previewDescription">
+              Heavy rich data. Prefer a preview or file reference for long-term
+              storage.
+            </p>
           </div>
         </div>
       );
@@ -2621,7 +2787,11 @@ function App() {
         <div className="richPreview audioPreview">
           <div className="audioCanvas">
             <AudioLines size={30} />
-            <button aria-label="Preview audio clip" className="previewPlayButton" type="button">
+            <button
+              aria-label="Preview audio clip"
+              className="previewPlayButton"
+              type="button"
+            >
               <Play size={13} fill="currentColor" />
             </button>
           </div>
@@ -2638,14 +2808,20 @@ function App() {
         <div className="richPreview videoPreview">
           <div className="videoThumb">
             <Video size={30} />
-            <button aria-label="Preview video clip" className="previewPlayButton" type="button">
+            <button
+              aria-label="Preview video clip"
+              className="previewPlayButton"
+              type="button"
+            >
               <Play size={13} fill="currentColor" />
             </button>
           </div>
           <div className="richPreviewText">
             <span className="previewTitle">Screen recording preview</span>
             <PreviewMeta items={["MOV", "1920 x 1080", "00:18", "42.3 MB"]} />
-            <p className="previewDescription">Screen recording preview. Keep payload size visible before saving.</p>
+            <p className="previewDescription">
+              Screen recording preview. Keep payload size visible before saving.
+            </p>
           </div>
         </div>
       );
@@ -2666,7 +2842,9 @@ function App() {
               <HardDrive size={13} />
               Local only
             </span>
-            <span className={windowFocused ? "focusBadge active" : "focusBadge"}>
+            <span
+              className={windowFocused ? "focusBadge active" : "focusBadge"}
+            >
               {windowFocused
                 ? "Internal copies ignored"
                 : "External copies captured"}
@@ -2710,7 +2888,10 @@ function App() {
               )}
             </nav>
             <div className="topbarControls">
-              <div className="sizeToggle vaultSizeToggle" aria-label="Card size">
+              <div
+                className="sizeToggle vaultSizeToggle"
+                aria-label="Card size"
+              >
                 {CARD_SIZES.map((size) => (
                   <button
                     className={
@@ -2769,7 +2950,10 @@ function App() {
             <div className="search">
               <Search size={20} />
               {selectedSearchFilters.length > 0 && (
-                <div className="selectedSearchFilters" ref={selectedSearchFiltersRef}>
+                <div
+                  className="selectedSearchFilters"
+                  ref={selectedSearchFiltersRef}
+                >
                   {selectedSearchFilters.map((filter) => (
                     <button
                       key={filterKey(filter)}
@@ -2933,32 +3117,45 @@ function App() {
                   <section className="filterSection vaultFilter">
                     <h3>Vault</h3>
                     <div className="filterGrid">
-                      {(["Chat", "Editor", "Terminal"] as Vault[]).map((vault) => {
-                        const filter = {
-                          category: "Vault" as const,
-                          label: vault,
-                          value: vault.toLowerCase(),
-                        };
+                      {(["Chat", "Editor", "Terminal"] as Vault[]).map(
+                        (vault) => {
+                          const filter = {
+                            category: "Vault" as const,
+                            label: vault,
+                            value: vault.toLowerCase(),
+                          };
 
-                        return (
-                          <button
-                            className={isSearchFilterSelected(filter) ? "selected" : undefined}
-                            key={vault}
-                            onMouseDown={(event) => event.preventDefault()}
-                            onClick={() => toggleSearchFilter(filter)}
-                            type="button"
-                          >
-                            <VaultBadgeIcon vault={vault} />
-                            {vault}
-                          </button>
-                        );
-                      })}
+                          return (
+                            <button
+                              className={
+                                isSearchFilterSelected(filter)
+                                  ? "selected"
+                                  : undefined
+                              }
+                              key={vault}
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => toggleSearchFilter(filter)}
+                              type="button"
+                            >
+                              <VaultBadgeIcon vault={vault} />
+                              {vault}
+                            </button>
+                          );
+                        },
+                      )}
                     </div>
                   </section>
                   <section className="filterSection typeFilter">
                     <h3>Type</h3>
                     <div className="filterGrid">
-                      {["Command", "Code", "Text", "Markdown", "URL", "Color"].map((label) => {
+                      {[
+                        "Command",
+                        "Code",
+                        "Text",
+                        "Markdown",
+                        "URL",
+                        "Color",
+                      ].map((label) => {
                         const filter = {
                           category: "Type" as const,
                           label,
@@ -2979,7 +3176,15 @@ function App() {
                   <section className="filterSection mediaFilter">
                     <h3>Media</h3>
                     <div className="filterGrid mediaFilterGrid">
-                      {["Image", "SVG", "Illustrator", "PDF", "File", "Audio", "Video"].map((label) => {
+                      {[
+                        "Image",
+                        "SVG",
+                        "Illustrator",
+                        "PDF",
+                        "File",
+                        "Audio",
+                        "Video",
+                      ].map((label) => {
                         const filter = {
                           category: "Media" as const,
                           label,
@@ -3001,12 +3206,36 @@ function App() {
                     <h3>App</h3>
                     <div className="filterGrid appFilterGrid">
                       {[
-                        { label: "Cursor", sourceLabel: "Cu", sourceClass: "source-cursor" },
-                        { label: "Figma", sourceLabel: "Fg", sourceClass: "source-figma" },
-                        { label: "Illustrator", sourceLabel: "Ai", sourceClass: "source-ai" },
-                        { label: "Chrome", sourceLabel: "Ch", sourceClass: "source-chrome" },
-                        { label: "Finder", sourceLabel: "Fi", sourceClass: "source-finder" },
-                        { label: "TextEdit", sourceLabel: "Tx", sourceClass: "source-textedit" },
+                        {
+                          label: "Cursor",
+                          sourceLabel: "Cu",
+                          sourceClass: "source-cursor",
+                        },
+                        {
+                          label: "Figma",
+                          sourceLabel: "Fg",
+                          sourceClass: "source-figma",
+                        },
+                        {
+                          label: "Illustrator",
+                          sourceLabel: "Ai",
+                          sourceClass: "source-ai",
+                        },
+                        {
+                          label: "Chrome",
+                          sourceLabel: "Ch",
+                          sourceClass: "source-chrome",
+                        },
+                        {
+                          label: "Finder",
+                          sourceLabel: "Fi",
+                          sourceClass: "source-finder",
+                        },
+                        {
+                          label: "TextEdit",
+                          sourceLabel: "Tx",
+                          sourceClass: "source-textedit",
+                        },
                       ].map((app) => {
                         const filter = {
                           category: "App" as const,
@@ -3081,14 +3310,16 @@ function App() {
                           <span
                             className={`sourceMetaIcon ${sourceApp(clip).className}`}
                           >
-                            <span className="appIcon">{sourceApp(clip).label}</span>
+                            <span className="appIcon">
+                              {sourceApp(clip).label}
+                            </span>
                           </span>
                         )}
-                        <span
-                          className={`riskTag riskTag-${clip.risk}`}
-                        >
+                        <span className={`riskTag riskTag-${clip.risk}`}>
                           <RiskBadgeIcon risk={clip.risk} />
-                          <span className="tagLabel">{riskDisplayLabel(clip.risk)}</span>
+                          <span className="tagLabel">
+                            {riskDisplayLabel(clip.risk)}
+                          </span>
                         </span>
                         <span
                           className={`vaultTag vaultTag-${clip.vault.toLowerCase()}`}
@@ -3104,12 +3335,16 @@ function App() {
                         </span>
                         {showLineCount(clip) && (
                           <span>
-                            <span className="tagLabel">{clip.lineCount} lines</span>
+                            <span className="tagLabel">
+                              {clip.lineCount} lines
+                            </span>
                           </span>
                         )}
                         {showTokenEstimate(clip) && (
                           <span className={tokenTagClass(clip)}>
-                            <span className="tagLabel">~{clip.tokenEstimate} tokens</span>
+                            <span className="tagLabel">
+                              ~{clip.tokenEstimate} tokens
+                            </span>
                           </span>
                         )}
                         {extraMetaTags(clip).map((tag) => (
@@ -3119,7 +3354,9 @@ function App() {
                         ))}
                         {clip.matchField && (
                           <span className="matchBadge">
-                            <span className="tagLabel">Matched in {clip.matchField}</span>
+                            <span className="tagLabel">
+                              Matched in {clip.matchField}
+                            </span>
                           </span>
                         )}
                       </div>
@@ -3142,24 +3379,26 @@ function App() {
                             ref={titleInputRef}
                             value={editingTitleValue}
                           />
-                          <button
-                            className="noteButton primary"
-                            onClick={() => saveTitleEdit(clip)}
-                            title="Save title"
-                            type="button"
-                          >
-                            <Check size={14} />
-                            <kbd className="keyHint">Enter</kbd>
-                          </button>
-                          <button
-                            className="noteButton"
-                            onClick={cancelTitleEdit}
-                            title="Cancel title edit"
-                            type="button"
-                          >
-                            <X size={14} />
-                            <kbd className="keyHint">Esc</kbd>
-                          </button>
+                          <div className="noteActions">
+                            <button
+                              className="noteButton primary"
+                              onClick={() => saveTitleEdit(clip)}
+                              title="Save title"
+                              type="button"
+                            >
+                              <Check size={14} />
+                              <kbd className="keyHint">Enter</kbd>
+                            </button>
+                            <button
+                              className="noteButton"
+                              onClick={cancelTitleEdit}
+                              title="Cancel title edit"
+                              type="button"
+                            >
+                              <X size={14} />
+                              <kbd className="keyHint">Esc</kbd>
+                            </button>
+                          </div>
                         </div>
                       ) : (
                         <div className="titleRow">
@@ -3200,11 +3439,11 @@ function App() {
                         onClick={() => copyClip(clip)}
                         type="button"
                       >
-                          {copiedClipId === clip.id ? (
-                            <Check size={16} />
-                          ) : (
-                            <Copy size={16} />
-                          )}
+                        {copiedClipId === clip.id ? (
+                          <Check size={16} />
+                        ) : (
+                          <Copy size={16} />
+                        )}
                         {copiedClipId === clip.id ? (
                           <span>Copied</span>
                         ) : clip.risk === "destructive" ? (
@@ -3213,16 +3452,19 @@ function App() {
                           <span>Review</span>
                         ) : null}
                       </button>
-                      {canEditClipText(clip) && !(cardSize === "compact" && isMediaPreviewClip(clip)) && (
-                        <button
-                          className="editClipTextButton"
-                          onClick={() => startClipTextEdit(clip)}
-                          title={`Edit clip text: ${clip.title}`}
-                          type="button"
-                        >
-                          <WrapText size={15} />
-                        </button>
-                      )}
+                      {canEditClipText(clip) &&
+                        !(
+                          cardSize === "compact" && isMediaPreviewClip(clip)
+                        ) && (
+                          <button
+                            className="editClipTextButton"
+                            onClick={() => startClipTextEdit(clip)}
+                            title={`Edit clip text: ${clip.title}`}
+                            type="button"
+                          >
+                            <WrapText size={15} />
+                          </button>
+                        )}
                       {cardSize !== "compact" && (
                         <button
                           className="deleteClipButton"
@@ -3245,7 +3487,10 @@ function App() {
                             setEditingClipTextValue(event.currentTarget.value)
                           }
                           onKeyDown={(event) => {
-                            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                            if (
+                              (event.metaKey || event.ctrlKey) &&
+                              event.key === "Enter"
+                            ) {
                               event.preventDefault();
                               saveClipTextEdit(clip);
                             }
@@ -3328,55 +3573,60 @@ function App() {
                     )}
                   </div>
 
-                  {!(cardSize === "compact" && isMediaPreviewClip(clip)) && (visibleNoteFields(clip).length > 0 ||
-                    shouldShowMatchReason(clip)) && (
-                    <footer className="clipFooter">
-                      <div className="noteBlock">
-                        {visibleNoteFields(clip).length > 0 && (
-                          <div className="noteStack">
-                            {visibleNoteFields(clip).map((field) =>
-                              renderNoteLine(clip, field, {
-                                required: field === "before",
-                              }),
-                            )}
-                          </div>
-                        )}
-                        {shouldShowMatchReason(clip) && (
-                          <p className="matchReason">{clip.matchReason}</p>
-                        )}
-                      </div>
-                    </footer>
-                  )}
-
-                  {!(cardSize === "compact" && isMediaPreviewClip(clip)) && detailRows(clip).length > 0 && (
-                    <>
-                      {cardSize !== "large" && (
-                        <button
-                          className="detailsToggle"
-                          onClick={() => toggleDetails(clip)}
-                          type="button"
-                        >
-                          {expandedDetails.has(clip.id) ? (
-                            <ChevronDown size={16} />
-                          ) : (
-                            <ChevronRight size={16} />
-                          )}
-                          Details
-                        </button>
-                      )}
-
-                      {(cardSize === "large" || expandedDetails.has(clip.id)) && (
-                        <section className="clipDetails">
-                          {detailRows(clip).map((row) => (
-                            <div className="detailItem" key={row.label}>
-                              <h3 className="detailLabel">{row.label}</h3>
-                              <p className="detailValue">{highlightQuery(row.value, query)}</p>
+                  {!(cardSize === "compact" && isMediaPreviewClip(clip)) &&
+                    (visibleNoteFields(clip).length > 0 ||
+                      shouldShowMatchReason(clip)) && (
+                      <footer className="clipFooter">
+                        <div className="noteBlock">
+                          {visibleNoteFields(clip).length > 0 && (
+                            <div className="noteStack">
+                              {visibleNoteFields(clip).map((field) =>
+                                renderNoteLine(clip, field, {
+                                  required: field === "before",
+                                }),
+                              )}
                             </div>
-                          ))}
-                        </section>
-                      )}
-                    </>
-                  )}
+                          )}
+                          {shouldShowMatchReason(clip) && (
+                            <p className="matchReason">{clip.matchReason}</p>
+                          )}
+                        </div>
+                      </footer>
+                    )}
+
+                  {!(cardSize === "compact" && isMediaPreviewClip(clip)) &&
+                    detailRows(clip).length > 0 && (
+                      <>
+                        {cardSize !== "large" && (
+                          <button
+                            className="detailsToggle"
+                            onClick={() => toggleDetails(clip)}
+                            type="button"
+                          >
+                            {expandedDetails.has(clip.id) ? (
+                              <ChevronDown size={16} />
+                            ) : (
+                              <ChevronRight size={16} />
+                            )}
+                            Details
+                          </button>
+                        )}
+
+                        {(cardSize === "large" ||
+                          expandedDetails.has(clip.id)) && (
+                          <section className="clipDetails">
+                            {detailRows(clip).map((row) => (
+                              <div className="detailItem" key={row.label}>
+                                <h3 className="detailLabel">{row.label}</h3>
+                                <p className="detailValue">
+                                  {highlightQuery(row.value, query)}
+                                </p>
+                              </div>
+                            ))}
+                          </section>
+                        )}
+                      </>
+                    )}
                 </article>
               ))
             )}
@@ -3387,7 +3637,10 @@ function App() {
           <div className="search">
             <Search size={20} />
             {selectedSearchFilters.length > 0 && (
-              <div className="selectedSearchFilters" ref={selectedSearchFiltersRef}>
+              <div
+                className="selectedSearchFilters"
+                ref={selectedSearchFiltersRef}
+              >
                 {selectedSearchFilters.map((filter) => (
                   <button
                     key={filterKey(filter)}
@@ -3551,32 +3804,45 @@ function App() {
                 <section className="filterSection vaultFilter">
                   <h3>Vault</h3>
                   <div className="filterGrid">
-                    {(["Chat", "Editor", "Terminal"] as Vault[]).map((vault) => {
-                      const filter = {
-                        category: "Vault" as const,
-                        label: vault,
-                        value: vault.toLowerCase(),
-                      };
+                    {(["Chat", "Editor", "Terminal"] as Vault[]).map(
+                      (vault) => {
+                        const filter = {
+                          category: "Vault" as const,
+                          label: vault,
+                          value: vault.toLowerCase(),
+                        };
 
-                      return (
-                        <button
-                          className={isSearchFilterSelected(filter) ? "selected" : undefined}
-                          key={vault}
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => toggleSearchFilter(filter)}
-                          type="button"
-                        >
-                          <VaultBadgeIcon vault={vault} />
-                          {vault}
-                        </button>
-                      );
-                    })}
+                        return (
+                          <button
+                            className={
+                              isSearchFilterSelected(filter)
+                                ? "selected"
+                                : undefined
+                            }
+                            key={vault}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => toggleSearchFilter(filter)}
+                            type="button"
+                          >
+                            <VaultBadgeIcon vault={vault} />
+                            {vault}
+                          </button>
+                        );
+                      },
+                    )}
                   </div>
                 </section>
                 <section className="filterSection typeFilter">
                   <h3>Type</h3>
                   <div className="filterGrid">
-                    {["Command", "Code", "Text", "Markdown", "URL", "Color"].map((label) => {
+                    {[
+                      "Command",
+                      "Code",
+                      "Text",
+                      "Markdown",
+                      "URL",
+                      "Color",
+                    ].map((label) => {
                       const filter = {
                         category: "Type" as const,
                         label,
@@ -3597,7 +3863,15 @@ function App() {
                 <section className="filterSection mediaFilter">
                   <h3>Media</h3>
                   <div className="filterGrid mediaFilterGrid">
-                    {["Image", "SVG", "Illustrator", "PDF", "File", "Audio", "Video"].map((label) => {
+                    {[
+                      "Image",
+                      "SVG",
+                      "Illustrator",
+                      "PDF",
+                      "File",
+                      "Audio",
+                      "Video",
+                    ].map((label) => {
                       const filter = {
                         category: "Media" as const,
                         label,
@@ -3619,11 +3893,31 @@ function App() {
                   <h3>App</h3>
                   <div className="filterGrid appFilterGrid">
                     {[
-                      { label: "Cursor", sourceLabel: "Cu", sourceClass: "source-cursor" },
-                      { label: "Figma", sourceLabel: "Fg", sourceClass: "source-figma" },
-                      { label: "Illustrator", sourceLabel: "Ai", sourceClass: "source-ai" },
-                      { label: "Chrome", sourceLabel: "Ch", sourceClass: "source-chrome" },
-                      { label: "Finder", sourceLabel: "Fi", sourceClass: "source-finder" },
+                      {
+                        label: "Cursor",
+                        sourceLabel: "Cu",
+                        sourceClass: "source-cursor",
+                      },
+                      {
+                        label: "Figma",
+                        sourceLabel: "Fg",
+                        sourceClass: "source-figma",
+                      },
+                      {
+                        label: "Illustrator",
+                        sourceLabel: "Ai",
+                        sourceClass: "source-ai",
+                      },
+                      {
+                        label: "Chrome",
+                        sourceLabel: "Ch",
+                        sourceClass: "source-chrome",
+                      },
+                      {
+                        label: "Finder",
+                        sourceLabel: "Fi",
+                        sourceClass: "source-finder",
+                      },
                     ].map((app) => {
                       const filter = {
                         category: "App" as const,
@@ -3660,7 +3954,9 @@ function App() {
             }}
           >
             {(() => {
-              const clip = clips.find((item) => item.id === clipContextMenu.clipId);
+              const clip = clips.find(
+                (item) => item.id === clipContextMenu.clipId,
+              );
               if (!clip) return null;
 
               return (
@@ -3760,7 +4056,9 @@ function App() {
                     <div className="settingRow">
                       <div>
                         <strong>Menu bar app</strong>
-                        <p>Keep quick access available outside the main window.</p>
+                        <p>
+                          Keep quick access available outside the main window.
+                        </p>
                       </div>
                       <span className="mockToggle on">On</span>
                     </div>
@@ -3787,14 +4085,20 @@ function App() {
                     <div className="settingRow muted">
                       <div>
                         <strong>Manual capture</strong>
-                        <p>Moved out of the header. Consider as an advanced action.</p>
+                        <p>
+                          Moved out of the header. Consider as an advanced
+                          action.
+                        </p>
                       </div>
                       <span className="futurePill">Future</span>
                     </div>
                     <div className="settingRow muted">
                       <div>
                         <strong>Ignored apps</strong>
-                        <p>Never capture from password managers, banking apps, or selected apps.</p>
+                        <p>
+                          Never capture from password managers, banking apps, or
+                          selected apps.
+                        </p>
                       </div>
                       <span className="futurePill">Planned</span>
                     </div>
@@ -3821,7 +4125,10 @@ function App() {
                     <div className="settingRow muted">
                       <div>
                         <strong>Large clip cleanup</strong>
-                        <p>Sort heavy images, files, and rich data before deleting.</p>
+                        <p>
+                          Sort heavy images, files, and rich data before
+                          deleting.
+                        </p>
                       </div>
                       <span className="futurePill">Planned</span>
                     </div>
@@ -3865,7 +4172,9 @@ function App() {
                       <div className="segmented">
                         {THEME_OPTIONS.map((option) => (
                           <button
-                            className={themeMode === option.value ? "active" : ""}
+                            className={
+                              themeMode === option.value ? "active" : ""
+                            }
                             key={option.value}
                             onClick={() => setThemeMode(option.value)}
                             type="button"
@@ -3881,9 +4190,18 @@ function App() {
                         <p>Compact for experts, Large for careful review.</p>
                       </div>
                       <div className="segmented">
-                        <button type="button">Compact</button>
-                        <button className="active" type="button">Normal</button>
-                        <button type="button">Large</button>
+                        {CARD_SIZES.map((option) => (
+                          <button
+                            className={
+                              cardSize === option.value ? "active" : ""
+                            }
+                            key={option.value}
+                            onClick={() => setCardSize(option.value)}
+                            type="button"
+                          >
+                            {option.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
                     <div className="settingRow wide">
@@ -3892,7 +4210,9 @@ function App() {
                         <p>Apply a familiar editor-like syntax theme.</p>
                       </div>
                       <div className="segmented">
-                        <button className="active" type="button">Cursor Dark</button>
+                        <button className="active" type="button">
+                          Cursor Dark
+                        </button>
                         <button type="button">VS Code</button>
                         <button type="button">GitHub</button>
                       </div>
@@ -3905,7 +4225,7 @@ function App() {
                   <div className="settingRows">
                     <div className="shortcutRow">
                       <span>Show Dev Clipboard</span>
-                      <kbd>⌘ ⇧ V</kbd>
+                      <kbd>{PANEL_SHORTCUT_LABEL}</kbd>
                     </div>
                     <div className="shortcutRow">
                       <span>Search clips</span>
@@ -3931,7 +4251,10 @@ function App() {
                     <div className="settingRow muted">
                       <div>
                         <strong>Product tour</strong>
-                        <p>Show a slide or short video that explains the app flow.</p>
+                        <p>
+                          Show a slide or short video that explains the app
+                          flow.
+                        </p>
                       </div>
                       <span className="futurePill">Guide</span>
                     </div>
@@ -3945,8 +4268,8 @@ function App() {
                     <span>Cloud sync</span>
                     <span>AI note generation</span>
                     <span>Source app icons</span>
-                    <span>Search result sorting</span>
-                    <span>Per-card delete</span>
+                    <span>Semantic search</span>
+                    <span>Rich content editing</span>
                   </div>
                 </section>
               </div>

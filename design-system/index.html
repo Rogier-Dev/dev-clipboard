@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Dev Clipboard Design System</title>
+        <link rel="stylesheet" href="./styles.css" />
+    </head>
+    <body>
+        <main class="page">
+            <header class="masthead">
+                <div>
+                    <p class="eyebrow">Dev Clipboard</p>
+                    <h1>Design System Preview</h1>
+                    <p class="summary">
+                        Tokens, typography, cards, buttons, tags, fields, and
+                        theme behavior for the developer clipboard UI.
+                    </p>
+                </div>
+                <nav class="mode-tabs" aria-label="Theme sections">
+                    <a href="#overview">Overview</a>
+                    <a href="#tokens">Tokens</a>
+                    <a href="#light">Light</a>
+                    <a href="#dark">Dark</a>
+                    <a href="#components">Components</a>
+                    <a href="#states">States</a>
+                </nav>
+            </header>
+
+            <section class="section" id="overview">
+                <h2>Core Direction</h2>
+                <div class="guidelines">
+                    <article>
+                        <h3>Product Feel</h3>
+                        <p>
+                            Compact, inspectable, developer-first, and
+                            low-friction. The app should look like a focused
+                            tool, not a marketing surface.
+                        </p>
+                    </article>
+                    <article>
+                        <h3>Hierarchy</h3>
+                        <p>
+                            Safety state, vault, type, title, saved/used
+                            metadata, preview, and notes. Notes carry the
+                            product value.
+                        </p>
+                    </article>
+                    <article>
+                        <h3>Accent Use</h3>
+                        <p>
+                            The yellow primary color is for decisive actions and
+                            selected controls. Text fields use gray focus
+                            borders.
+                        </p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section" id="tokens">
+                <h2>Typography</h2>
+                <div class="font-callout">
+                    <div>
+                        <span class="token-label">Primary UI Font</span>
+                        <strong>Inter</strong>
+                        <code
+                            >Inter, ui-sans-serif, system-ui, -apple-system,
+                            BlinkMacSystemFont, "Segoe UI", sans-serif</code
+                        >
+                    </div>
+                    <div>
+                        <span class="token-label">Monospace Font</span>
+                        <strong>Geist Mono</strong>
+                        <code
+                            >"Geist Mono", ui-monospace, SFMono-Regular, Menlo,
+                            Monaco, Consolas, monospace</code
+                        >
+                    </div>
+                </div>
+                <div class="type-grid">
+                    <div>
+                        <span class="token-label">Card Title / 21px</span>
+                        <p class="sample-title">Understand before you paste</p>
+                    </div>
+                    <div>
+                        <span class="token-label">Body / 13px</span>
+                        <p class="sample-body">
+                            Description, When to use, and Before explain intent
+                            before clipboard content returns to the pasteboard.
+                        </p>
+                    </div>
+                    <div>
+                        <span class="token-label">Mono Preview</span>
+                        <pre><code>git push -u origin main</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Border Radius</h2>
+                <div class="radius-grid">
+                    <article>
+                        <span class="token-label">Panel</span
+                        ><strong>18px</strong>
+                        <div class="radius-sample panel-radius"></div>
+                    </article>
+                    <article>
+                        <span class="token-label">Card</span
+                        ><strong>14px</strong>
+                        <div class="radius-sample card-radius"></div>
+                    </article>
+                    <article>
+                        <span class="token-label">Compact Card</span
+                        ><strong>13px</strong>
+                        <div class="radius-sample compact-radius"></div>
+                    </article>
+                    <article>
+                        <span class="token-label">Control</span
+                        ><strong>10px</strong>
+                        <div class="radius-sample control-radius"></div>
+                    </article>
+                    <article>
+                        <span class="token-label">Preview</span
+                        ><strong>12px</strong>
+                        <div class="radius-sample preview-radius"></div>
+                    </article>
+                    <article>
+                        <span class="token-label">Tag</span
+                        ><strong>999px</strong>
+                        <div class="radius-sample tag-radius"></div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Spacing Rules</h2>
+                <div class="spacing-grid">
+                    <article>
+                        <span class="token-label">Panel Content</span>
+                        <strong>16px 32px 92px</strong>
+                        <p>
+                            Main scroll area padding. Bottom padding leaves room
+                            for fixed search.
+                        </p>
+                    </article>
+                    <article>
+                        <span class="token-label">Card Padding</span>
+                        <strong>16px</strong>
+                        <p>
+                            Default card interior. Compact cards reduce to 13px.
+                        </p>
+                    </article>
+                    <article>
+                        <span class="token-label">Card Gap</span>
+                        <strong>14px</strong>
+                        <p>
+                            Vertical rhythm between repeated clips. Compact
+                            cards use 12px.
+                        </p>
+                    </article>
+                    <article>
+                        <span class="token-label">Header Gap</span>
+                        <strong>10px</strong>
+                        <p>
+                            Gap between tag row and action buttons inside a card
+                            header.
+                        </p>
+                    </article>
+                    <article>
+                        <span class="token-label">Tag Gap</span>
+                        <strong>7px</strong>
+                        <p>
+                            Horizontal spacing between safety, vault, type, and
+                            metadata tags.
+                        </p>
+                    </article>
+                    <article>
+                        <span class="token-label">Note Gap</span>
+                        <strong>6px / 8px</strong>
+                        <p>
+                            6px between note rows, 8px between note label/value
+                            and edit action.
+                        </p>
+                    </article>
+                    <article>
+                        <span class="token-label">Field Padding</span>
+                        <strong>0 12px</strong>
+                        <p>
+                            Single-line input padding. Textareas use 10px 11px
+                            or 15px for code editing.
+                        </p>
+                    </article>
+                    <article>
+                        <span class="token-label">Radius Scale</span>
+                        <strong>10px / 14px / 18px</strong>
+                        <p>
+                            Controls 10px, cards 14px, panel 18px. Tags stay
+                            fully rounded.
+                        </p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Palette</h2>
+                <div class="swatches">
+                    <div class="swatch accent">
+                        <span>#efff2d</span><strong>Primary Accent</strong>
+                    </div>
+                    <div class="swatch safe">
+                        <span>#3fffc7</span><strong>Safe</strong>
+                    </div>
+                    <div class="swatch review">
+                        <span>#ff3f57</span><strong>Review / Risk</strong>
+                    </div>
+                    <div class="swatch chat">
+                        <span>#9eb7ff</span><strong>Chat</strong>
+                    </div>
+                    <div class="swatch editor">
+                        <span>#d7a4ff</span><strong>Editor</strong>
+                    </div>
+                    <div class="swatch terminal">
+                        <span>#78d8ff</span><strong>Terminal</strong>
+                    </div>
+                    <div class="swatch all">
+                        <span>#c8c1ff</span><strong>All Vaults</strong>
+                    </div>
+                    <div class="swatch field">
+                        <span>#8f929b</span><strong>Field Focus</strong>
+                    </div>
+                </div>
+            </section>
+
+            <section class="theme-pair">
+                <article class="theme-frame light" id="light">
+                    <header>
+                        <span class="theme-label">Light Mode</span>
+                        <div class="tabs">
+                            <span>Chat</span>
+                            <span>Editor</span>
+                            <span>Terminal</span>
+                            <strong>All Vaults</strong>
+                        </div>
+                    </header>
+                    <div class="clip-card">
+                        <div class="card-top">
+                            <div class="tags">
+                                <span class="tag safe-tag">Safe</span>
+                                <span class="tag editor-tag">{ } Editor</span>
+                                <span class="tag type-tag">T Text</span>
+                            </div>
+                            <button class="icon-btn primary" aria-label="Copy">
+                                ⧉
+                            </button>
+                            <button class="icon-btn" aria-label="Details">
+                                ≡
+                            </button>
+                        </div>
+                        <h3>
+                            ssh-ed25519
+                            AAAAC3NzaC1lZDI1NTE5AAAAIOObRekB1K8lOgW43d0mUsquQnmUbWMHel7rO4elWDdW
+                        </h3>
+                        <p class="meta-text">Saved 6h ago, Used 0 times</p>
+                        <pre><code>ssh-ed25519 AAAAC3NzaC1lZDI1NTE5...</code></pre>
+                        <p class="note">
+                            <strong>Description:</strong> <span>Add note</span>
+                        </p>
+                        <p class="note">
+                            <strong>When to use:</strong> <span>Add note</span>
+                        </p>
+                        <p class="note">
+                            <strong>Before:</strong>
+                            <span
+                                >Ready to copy. Paste manually with
+                                Command+V.</span
+                            >
+                        </p>
+                    </div>
+                </article>
+
+                <article class="theme-frame dark" id="dark">
+                    <header>
+                        <span class="theme-label">Dark Mode</span>
+                        <div class="tabs">
+                            <span>Chat</span>
+                            <span>Editor</span>
+                            <span>Terminal</span>
+                            <strong>All Vaults</strong>
+                        </div>
+                    </header>
+                    <div class="clip-card">
+                        <div class="card-top">
+                            <div class="tags">
+                                <span class="tag safe-tag">Safe</span>
+                                <span class="tag editor-tag">{ } Editor</span>
+                                <span class="tag type-tag">T Text</span>
+                            </div>
+                            <button class="icon-btn primary" aria-label="Copy">
+                                ⧉
+                            </button>
+                            <button class="icon-btn" aria-label="Details">
+                                ≡
+                            </button>
+                        </div>
+                        <h3>Review migration command before running</h3>
+                        <p class="meta-text">
+                            Saved 2h ago, Used 1 times · 5h ago
+                        </p>
+                        <pre><code>npm run tauri dev</code></pre>
+                        <label class="field-label">Title Field</label>
+                        <input
+                            value="Review migration command before running"
+                        />
+                        <div class="actions">
+                            <button class="button primary">✓ Enter</button>
+                            <button class="button">× Esc</button>
+                        </div>
+                    </div>
+                </article>
+            </section>
+
+            <section class="section" id="components">
+                <h2>Components</h2>
+                <div class="component-grid">
+                    <article>
+                        <h3>Buttons</h3>
+                        <div class="row">
+                            <button class="button primary">Copy</button>
+                            <button class="button">Cancel</button>
+                            <button class="button risk">Review</button>
+                            <button class="icon-btn primary">⧉</button>
+                            <button class="icon-btn">⚙</button>
+                        </div>
+                    </article>
+                    <article>
+                        <h3>Tags</h3>
+                        <div class="tags">
+                            <span class="tag safe-tag">Safe</span>
+                            <span class="tag review-tag">Review</span>
+                            <span class="tag editor-tag">{ } Editor</span>
+                            <span class="tag terminal-tag">Terminal</span>
+                            <span class="tag type-tag">T Text</span>
+                        </div>
+                    </article>
+                    <article>
+                        <h3>Fields</h3>
+                        <label class="field-label"
+                            >Focused field uses gray, not yellow</label
+                        >
+                        <input
+                            value="Title text wraps and stays inside the card"
+                        />
+                    </article>
+                    <article>
+                        <h3>Search</h3>
+                        <div class="search-demo">
+                            <div class="search">
+                                ⌕ <span>Search body, notes, risk...</span>
+                                <strong>☷</strong>
+                            </div>
+                            <div class="search-popover">
+                                <div class="popover-head">Search Filters</div>
+                                <button class="popover-item selected">
+                                    Description
+                                </button>
+                                <button class="popover-item">
+                                    When to use
+                                </button>
+                                <button class="popover-item">Before</button>
+                                <button class="popover-item">Risk</button>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section" id="states">
+                <h2>Interaction States</h2>
+                <div class="state-grid">
+                    <article>
+                        <h3>Buttons</h3>
+                        <div class="state-row">
+                            <button class="button">Default</button>
+                            <button class="button is-hover">Hover</button>
+                            <button class="button is-focus">Focus</button>
+                            <button class="button is-active">Active</button>
+                        </div>
+                        <div class="state-row">
+                            <button class="button primary">Primary</button>
+                            <button class="button primary is-hover">
+                                Hover
+                            </button>
+                            <button class="button primary is-focus">
+                                Focus
+                            </button>
+                            <button class="button primary is-active">
+                                Active
+                            </button>
+                        </div>
+                    </article>
+                    <article>
+                        <h3>Icon Buttons</h3>
+                        <div class="state-row">
+                            <button class="icon-btn">⚙</button>
+                            <button class="icon-btn is-hover">⚙</button>
+                            <button class="icon-btn is-focus">⚙</button>
+                            <button class="icon-btn is-active">⚙</button>
+                            <button class="icon-btn primary">⧉</button>
+                        </div>
+                    </article>
+                    <article>
+                        <h3>Text Links</h3>
+                        <p class="link-stack">
+                            <a href="#">Default link</a>
+                            <a href="#" class="is-hover">Hover link</a>
+                            <a href="#" class="is-focus">Focus link</a>
+                            <a href="#" class="is-active">Active link</a>
+                        </p>
+                    </article>
+                    <article>
+                        <h3>Search / Sort Popover</h3>
+                        <div class="search-demo static-popover">
+                            <div class="search is-focus">
+                                ⌕
+                                <span
+                                    ><span class="filter-pill">Risk</span> rm
+                                    -rf</span
+                                >
+                                <strong>×</strong>
+                            </div>
+                            <div class="search-popover sort-popover-sample">
+                                <button class="popover-item selected">
+                                    Recent
+                                </button>
+                                <button class="popover-item is-hover">
+                                    Risk
+                                </button>
+                                <button class="popover-item">Used</button>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>Token Table</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Role</th>
+                            <th>Dark</th>
+                            <th>Light</th>
+                            <th>Use</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Text primary</td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #f6f2ea"></span
+                                    >#f6f2ea</span
+                                >
+                            </td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #000000"></span
+                                    >#000000</span
+                                >
+                            </td>
+                            <td>Titles, labels</td>
+                        </tr>
+                        <tr>
+                            <td>Text body</td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #aaa5b0"></span
+                                    >#aaa5b0</span
+                                >
+                            </td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #45414a"></span
+                                    >#45414a</span
+                                >
+                            </td>
+                            <td>Secondary prose</td>
+                        </tr>
+                        <tr>
+                            <td>Text muted</td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #817c87"></span
+                                    >#817c87</span
+                                >
+                            </td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #6a6570"></span
+                                    >#6a6570</span
+                                >
+                            </td>
+                            <td>Metadata</td>
+                        </tr>
+                        <tr>
+                            <td>Card</td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #202023"></span
+                                    >#202023</span
+                                >
+                            </td>
+                            <td>
+                                <span class="color-token"
+                                    ><span
+                                        class="alpha-chip"
+                                        style="
+                                            --chip: rgba(255, 255, 255, 0.82);
+                                        "
+                                    ></span
+                                    >rgba(255,255,255,.82) <em>Alpha</em></span
+                                >
+                            </td>
+                            <td>Clip cards</td>
+                        </tr>
+                        <tr>
+                            <td>Border</td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #303034"></span
+                                    >#303034</span
+                                >
+                            </td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #c9c9cf"></span
+                                    >#c9c9cf</span
+                                >
+                            </td>
+                            <td>Controls, cards</td>
+                        </tr>
+                        <tr>
+                            <td>Field focus</td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #77737e"></span
+                                    >#77737e</span
+                                >
+                            </td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #8f929b"></span
+                                    >#8f929b</span
+                                >
+                            </td>
+                            <td>Inputs and textarea focus</td>
+                        </tr>
+                        <tr>
+                            <td>Primary</td>
+                            <td colspan="2">
+                                <span class="color-token"
+                                    ><span style="--chip: #efff2d"></span
+                                    >#efff2d</span
+                                >
+                            </td>
+                            <td>Copy, selected controls</td>
+                        </tr>
+                        <tr>
+                            <td>Search / Sort Popover</td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #202023"></span
+                                    >#202023</span
+                                >
+                            </td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #ffffff"></span
+                                    >#ffffff</span
+                                >
+                            </td>
+                            <td>
+                                Opaque menu surfaces; selected light item uses
+                                #f1f5c2 / #505700
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Link</td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #c8c1ff"></span
+                                    >#c8c1ff</span
+                                >
+                            </td>
+                            <td>
+                                <span class="color-token"
+                                    ><span style="--chip: #4f46e5"></span
+                                    >#4f46e5</span
+                                >
+                            </td>
+                            <td>Secondary navigation and preview URLs</td>
+                        </tr>
+                        <tr>
+                            <td>Radius</td>
+                            <td colspan="2">10 / 12 / 14 / 18 / 999px</td>
+                            <td>Controls, previews, cards, panel, tags</td>
+                        </tr>
+                        <tr>
+                            <td>UI Font</td>
+                            <td colspan="2">Inter stack</td>
+                            <td>All interface text</td>
+                        </tr>
+                        <tr>
+                            <td>Mono Font</td>
+                            <td colspan="2">Geist Mono stack</td>
+                            <td>Code, commands, paths, tokens</td>
+                        </tr>
+                        <tr>
+                            <td>Spacing Base</td>
+                            <td colspan="2">8px rhythm</td>
+                            <td>Use 8, 10, 12, 14, 16, 22, 32</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </body>
+</html>

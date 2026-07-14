@@ -10,7 +10,9 @@ Validate the smallest useful app loop:
 2. Save recent copied text locally.
 3. Classify likely Terminal commands.
 4. Show a risk label and `Before` note.
-5. Copy a selected clip back to the system clipboard.
+5. Let the user edit `Description`, `When to use`, and `Before`.
+6. Search clip body and Dev metadata.
+7. Copy a selected clip back to the system clipboard.
 
 This spike intentionally does not use Auto Paste. The user still pastes manually with Command+V.
 
@@ -18,16 +20,42 @@ This spike intentionally does not use Auto Paste. The user still pastes manually
 
 - Tauri 2
 - React + TypeScript
+- Vite
 - `@tauri-apps/plugin-clipboard-manager`
+- `@tauri-apps/plugin-global-shortcut`
+- `@tauri-apps/plugin-sql` with SQLite
 - `lucide-react`
-- `localStorage` for temporary spike history
+- `shiki` with a limited local language/theme bundle
+- `localStorage` only for lightweight UI preferences such as theme mode
 
 ## How To Run
 
+From this directory:
+
 ```sh
-cd apps/dev-clipboard-spike
 npm install
 npm run tauri dev
+```
+
+From the repository root:
+
+```sh
+npm --prefix apps/dev-clipboard-spike install
+npm --prefix apps/dev-clipboard-spike run tauri dev
+```
+
+## Build Check
+
+From this directory:
+
+```sh
+npm run build
+```
+
+From the repository root:
+
+```sh
+npm --prefix apps/dev-clipboard-spike run build
 ```
 
 ## Verification Status
@@ -35,9 +63,12 @@ npm run tauri dev
 Completed:
 
 - Frontend TypeScript/Vite build passes with `npm run build`.
-- Full Tauri/Rust dev build passes with `npx tauri dev --config '{"build":{"beforeDevCommand":""}}' --no-dev-server-wait` while Vite is already running.
+- Full Tauri/Rust dev build has previously passed with `npx tauri dev --config '{"build":{"beforeDevCommand":""}}' --no-dev-server-wait` while Vite was already running.
 - Clipboard plugin is registered in Tauri.
-- Read/write permissions are added to the default capability.
+- Global shortcut plugin is registered in Tauri.
+- Panel shortcut is `⌘ ⌥ V` on macOS.
+- Read/write clipboard permissions are added to the default capability.
+- SQLite permissions are added to the default capability.
 - React UI includes monitoring, manual read, local history, command risk labels, and copy-back.
 - Real clipboard monitoring was confirmed with `rm -rf dist`.
 - The copied command appeared in the app history.
@@ -63,16 +94,27 @@ Completed:
 - SQLite stores `description` and `when_to_use` directly on each clip for the spike.
 - FTS search indexes body, title, risk, `Description`, `When to use`, `Before`, and Dev metadata.
 
-Pending:
+## Known Gaps / Pending Decisions
 
 - Search architecture should keep a common UI while allowing mode-specific engines:
-  Dev mode uses SQLite FTS + metadata; future Plain mode can use N-gram or a Japanese tokenizer.
+  - Dev mode: SQLite FTS + metadata.
+  - Future Plain mode: likely N-gram search or a Japanese tokenizer.
+- Shiki now uses a limited local language/theme bundle, and `build:quiet` is available for compact validation output. Future syntax packs can extend this without returning to the full Shiki bundle.
+- Settings UI is still partly placeholder-level and needs to be separated into real MVP settings versus future/planned items.
+- History deletion and ignored app settings still need product-quality implementation.
+- Clipboard capture is currently text-first. Rich data, images, and advanced file handling are outside this spike.
+- Internal copy guard intentionally ignores clipboard changes while Dev Clipboard is focused; this avoids history pollution but can miss some edge cases.
 
-## Next Spike Step
+## MVP Checklist
 
-After Tauri build succeeds, replace `localStorage` with SQLite:
+See `MVP_CHECKLIST.md` for the current MVP scope mapped to implemented, partial, missing, and out-of-scope items.
 
-1. Add `@tauri-apps/plugin-sql`.
-2. Create `clips` and `clip_notes` tables.
-3. Add an FTS table for body + metadata search.
-4. Keep the same React UI and swap the storage layer.
+## Next Spike Steps
+
+The detailed order and completion criteria now live in `MVP_CHECKLIST.md`. The next implementation slice is:
+
+1. Stop production insertion of demo-heavy clips.
+2. Implement confirmed bulk history deletion and keep SQLite/FTS changes consistent.
+3. Decide whether real source-app detection and ignored apps are MVP requirements.
+4. Replace remaining placeholder settings with working controls or explicit `Future` states.
+5. Extract classification and risk rules into testable modules and add regression tests.

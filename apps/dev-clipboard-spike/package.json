@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:quiet": "tsc && vite build --logLevel warn",
     "preview": "vite preview",
     "tauri": "tauri"
   },
