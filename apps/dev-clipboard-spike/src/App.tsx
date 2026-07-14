@@ -1179,6 +1179,8 @@ function App() {
   );
   const [cardSize, setCardSize] = useState<CardSize>(readStoredCardSize);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [historyDeleteOpen, setHistoryDeleteOpen] = useState(false);
+  const [historyDeleting, setHistoryDeleting] = useState(false);
   const [clipContextMenu, setClipContextMenu] =
     useState<ClipContextMenu | null>(null);
   const [lastDeletedClip, setLastDeletedClip] = useState<Clip | null>(null);
@@ -1401,6 +1403,12 @@ function App() {
         return;
       }
 
+      if (event.key === "Escape" && historyDeleteOpen) {
+        event.preventDefault();
+        if (!historyDeleting) setHistoryDeleteOpen(false);
+        return;
+      }
+
       if (event.key === "Escape" && settingsOpen) {
         event.preventDefault();
         setSettingsOpen(false);
@@ -1432,6 +1440,8 @@ function App() {
   }, [
     clipContextMenu,
     filterOpen,
+    historyDeleteOpen,
+    historyDeleting,
     lastDeletedClip,
     searchFocused,
     settingsOpen,
@@ -2302,6 +2312,29 @@ function App() {
       setStatus(`Restored clip: ${clip.title}`);
     } catch (error) {
       setStatus(`Undo failed: ${String(error)}`);
+    }
+  }
+
+  async function deleteAllHistory() {
+    const db = dbRef.current;
+    if (!db || historyDeleting) return;
+
+    setHistoryDeleting(true);
+    try {
+      // Search always joins clips, so deleting primary rows first prevents
+      // stale FTS rows from appearing if index cleanup fails afterward.
+      await db.execute("DELETE FROM clips");
+      await db.execute("DELETE FROM clip_search");
+      setClips([]);
+      setLastDeletedClip(null);
+      setQuery("");
+      setSelectedSearchFilters([]);
+      setHistoryDeleteOpen(false);
+      setStatus("Deleted all clipboard history.");
+    } catch (error) {
+      setStatus(`Delete history failed: ${String(error)}`);
+    } finally {
+      setHistoryDeleting(false);
     }
   }
 
@@ -4224,13 +4257,17 @@ function App() {
                       </div>
                       <span className="futurePill">Planned</span>
                     </div>
-                    <div className="settingRow danger">
+                    <button
+                      className="settingRow danger historyDeleteTrigger"
+                      onClick={() => setHistoryDeleteOpen(true)}
+                      type="button"
+                    >
                       <div>
                         <strong>Delete history</strong>
-                        <p>Clear saved clips by range after confirmation.</p>
+                        <p>Delete all saved clips after confirmation.</p>
                       </div>
                       <span className="dangerPill">Review</span>
-                    </div>
+                    </button>
                   </div>
                 </section>
 
@@ -4404,6 +4441,46 @@ function App() {
                 )}
               </div>
             </section>
+
+            {historyDeleteOpen && (
+              <div className="historyDeleteOverlay" role="presentation">
+                <section
+                  aria-labelledby="history-delete-title"
+                  aria-modal="true"
+                  className="historyDeleteDialog"
+                  role="dialog"
+                >
+                  <div className="historyDeleteIcon" aria-hidden="true">
+                    <Trash2 size={20} />
+                  </div>
+                  <div>
+                    <h3 id="history-delete-title">Delete all history?</h3>
+                    <p>
+                      This permanently deletes {clips.length} saved clip
+                      {clips.length === 1 ? "" : "s"} from this Mac. This
+                      action cannot be undone.
+                    </p>
+                  </div>
+                  <div className="historyDeleteActions">
+                    <button
+                      disabled={historyDeleting}
+                      onClick={() => setHistoryDeleteOpen(false)}
+                      type="button"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="confirmDelete"
+                      disabled={historyDeleting || clips.length === 0}
+                      onClick={deleteAllHistory}
+                      type="button"
+                    >
+                      {historyDeleting ? "Deleting..." : "Delete all"}
+                    </button>
+                  </div>
+                </section>
+              </div>
+            )}
           </div>
         )}
       </section>
