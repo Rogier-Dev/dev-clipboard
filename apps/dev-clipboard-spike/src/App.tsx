@@ -28,7 +28,17 @@ import {
   type SourceApplication,
   type Vault,
 } from "./clipModel";
-import { buildDevSearchText, DEV_SEARCH_SYNONYMS } from "./searchModel";
+import {
+  buildDevSearchText,
+  detectMatchField,
+  detectMatchReason,
+  matchesSearchFilters,
+  previewType,
+  riskDisplayLabel,
+  shouldShowMatchReason,
+  sourceApp,
+  type SearchFilterToken,
+} from "./searchModel";
 import {
   ArrowDownUp,
   Check,
@@ -74,19 +84,12 @@ type CardSize = "compact" | "normal" | "large";
 type SortMode = "recent" | "risk" | "used";
 type ColorFormat = "hex" | "rgb" | "hsl" | "rgba";
 type ThemeMode = "system" | "dark" | "light";
-type SearchFilterCategory = "Safety" | "Vault" | "Type" | "Media" | "App";
 type ClipContextMenu = {
   clipId: string;
   x: number;
   y: number;
 };
 type ClipOperation = "copy" | "delete" | "restore" | "save";
-
-type SearchFilterToken = {
-  category: SearchFilterCategory;
-  label: string;
-  value: string;
-};
 
 type Clip = {
   id: string;
@@ -630,58 +633,6 @@ function clipUsedText(clip: Clip) {
   return `Used ${clip.useCount} times · ${formatRelative(clip.lastUsedAt)}`;
 }
 
-function searchTerms(query: string) {
-  return query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-}
-
-function valueMatchesQuery(value: string, query: string) {
-  const terms = searchTerms(query);
-  if (terms.length === 0) return false;
-
-  const normalized = value.toLowerCase();
-  return terms.every((term) => normalized.includes(term));
-}
-
-function detectMatchField(clip: Clip, query: string) {
-  const fields = [
-    ["Body", clip.body],
-    ["Title", clip.title],
-    ["Description", clip.description],
-    ["When to use", clip.whenToUse],
-    ["Risk", `${clip.risk} ${clip.riskLabel} ${riskDisplayLabel(clip.risk)}`],
-    ["Before", clip.before],
-    ["Type", clip.type],
-    ["Vault", clip.vault],
-  ] as const;
-
-  return fields.find(([, value]) => valueMatchesQuery(value, query))?.[0];
-}
-
-function detectMatchReason(clip: Clip, query: string) {
-  const direct = detectMatchField(clip, query);
-  if (direct) return undefined;
-
-  const q = query.trim().toLowerCase();
-  const synonymMatch = DEV_SEARCH_SYNONYMS.find(
-    ([pattern, words]) =>
-      pattern.test(clip.body) && words.toLowerCase().includes(q),
-  );
-
-  if (synonymMatch) {
-    return `Dev metadata maps "${query}" to ${clip.riskLabel}`;
-  }
-
-  return "Matched in search metadata";
-}
-
-function shouldShowMatchReason(clip: Clip) {
-  return Boolean(clip.matchReason && clip.matchField === "Dev metadata");
-}
-
-function previewType(clip: Clip) {
-  return clip.type.toLowerCase();
-}
-
 function shouldUseRichPreview(clip: Clip) {
   return [
     "image",
@@ -736,70 +687,6 @@ function visibleNoteFields(clip: Clip): NoteField[] {
   }
 
   return ["description", "whenToUse", "before"];
-}
-
-function sourceApp(clip: Clip) {
-  const sourceName = clip.sourceAppName.trim();
-  const sourceBundleId = clip.sourceAppBundleId.toLowerCase();
-
-  if (sourceBundleId === "com.apple.finder" || /finder/i.test(sourceName)) {
-    return { label: "Fi", name: "Finder", className: "source-finder" };
-  }
-  if (/cursor/i.test(sourceName) || sourceBundleId.includes("todesktop")) {
-    return { label: "Cu", name: "Cursor", className: "source-cursor" };
-  }
-  if (/figma/i.test(sourceName)) {
-    return { label: "Fg", name: "Figma", className: "source-figma" };
-  }
-  if (/illustrator/i.test(sourceName)) {
-    return { label: "Ai", name: "Illustrator", className: "source-ai" };
-  }
-  if (/chrome/i.test(sourceName)) {
-    return { label: "Ch", name: "Chrome", className: "source-chrome" };
-  }
-  if (/textedit/i.test(sourceName)) {
-    return { label: "Tx", name: "TextEdit", className: "source-textedit" };
-  }
-
-  if (clip.sourceAppName) {
-    const label = clip.sourceAppName
-      .split(/\s+/)
-      .map((part) => part[0])
-      .join("")
-      .slice(0, 2);
-    return {
-      label: label || clip.sourceAppName.slice(0, 2),
-      name: clip.sourceAppName,
-      className: "source-dev",
-    };
-  }
-
-  const type = previewType(clip);
-
-  if (type === "illustrator")
-    return { label: "Ai", name: "Illustrator", className: "source-ai" };
-  if (clip.body.includes(".fig"))
-    return { label: "Fg", name: "Figma", className: "source-figma" };
-  if (type === "url")
-    return { label: "Ch", name: "Chrome", className: "source-chrome" };
-  if (type === "pdf")
-    return { label: "Pr", name: "Preview", className: "source-preview" };
-  if (type === "file")
-    return { label: "Fi", name: "Finder", className: "source-finder" };
-  if (type === "audio")
-    return { label: "Vm", name: "Voice Memos", className: "source-voice" };
-  if (type === "video")
-    return { label: "Qt", name: "QuickTime", className: "source-quicktime" };
-  if (type === "image")
-    return { label: "Sc", name: "Screenshot", className: "source-screenshot" };
-  if (["code", "markdown", "svg"].includes(type))
-    return { label: "Cu", name: "Cursor", className: "source-cursor" };
-  if (type === "color")
-    return { label: "Fg", name: "Figma", className: "source-figma" };
-  if (type === "text")
-    return { label: "Tx", name: "TextEdit", className: "source-textedit" };
-
-  return { label: "Dc", name: "Dev Clipboard", className: "source-dev" };
 }
 
 function PreviewMeta({ items }: { items: string[] }) {
@@ -878,12 +765,6 @@ function VaultBadgeIcon({ vault }: { vault: Vault }) {
   return <Terminal size={12} />;
 }
 
-function riskDisplayLabel(risk: RiskLevel) {
-  if (risk === "safe") return "Safe";
-  if (risk === "check") return "Review";
-  return "Risk";
-}
-
 function tokenTagClass(clip: Clip) {
   if (clip.tokenEstimate >= 10000) return "tokenTag tokenTag-high";
   if (clip.tokenEstimate >= 1000) return "tokenTag tokenTag-medium";
@@ -911,37 +792,6 @@ function FilterIcon({ type }: { type: string }) {
 
 function filterKey(filter: SearchFilterToken) {
   return `${filter.category}:${filter.value}`;
-}
-
-function matchesSearchFilters(clip: Clip, filters: SearchFilterToken[]) {
-  if (filters.length === 0) return true;
-
-  const groups = filters.reduce<Record<SearchFilterCategory, string[]>>(
-    (current, filter) => {
-      current[filter.category].push(filter.value);
-      return current;
-    },
-    {
-      Safety: [],
-      Vault: [],
-      Type: [],
-      Media: [],
-      App: [],
-    },
-  );
-  const type = previewType(clip);
-  const source = sourceApp(clip).name.toLowerCase();
-  const riskValue =
-    clip.risk === "safe" ? "safe" : clip.risk === "check" ? "review" : "risk";
-
-  return (
-    (groups.Safety.length === 0 || groups.Safety.includes(riskValue)) &&
-    (groups.Vault.length === 0 ||
-      groups.Vault.includes(clip.vault.toLowerCase())) &&
-    (groups.Type.length === 0 || groups.Type.includes(type)) &&
-    (groups.Media.length === 0 || groups.Media.includes(type)) &&
-    (groups.App.length === 0 || groups.App.includes(source))
-  );
 }
 
 function formatSearchFilters(filters: SearchFilterToken[]) {
