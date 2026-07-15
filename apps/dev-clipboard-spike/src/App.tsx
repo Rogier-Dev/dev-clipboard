@@ -1373,6 +1373,11 @@ function App() {
 
         unlistenFocus = await appWindow.onFocusChanged(({ payload }) => {
           setWindowFocused(payload);
+          if (!payload) {
+            setFilterOpen(false);
+            setSortOpen(false);
+            setClipContextMenu(null);
+          }
         });
       } catch (error) {
         reportError(`Window focus watch failed: ${String(error)}`);
@@ -2303,13 +2308,7 @@ function App() {
   }, [dbReady, query, selectedVault, selectedSearchFilters, visibleClipCount]);
 
   useEffect(() => {
-    const suspendAutoHide = Boolean(
-      settingsOpen ||
-        historyDeleteOpen ||
-        filterOpen ||
-        sortOpen ||
-        clipContextMenu,
-    );
+    const suspendAutoHide = historyDeleteOpen;
 
     invoke("set_panel_auto_hide_suspended", {
       suspended: suspendAutoHide,
@@ -2325,13 +2324,7 @@ function App() {
         },
       );
     };
-  }, [
-    clipContextMenu,
-    filterOpen,
-    historyDeleteOpen,
-    settingsOpen,
-    sortOpen,
-  ]);
+  }, [historyDeleteOpen]);
 
   useEffect(() => {
     if (!editingTitleId) return;
