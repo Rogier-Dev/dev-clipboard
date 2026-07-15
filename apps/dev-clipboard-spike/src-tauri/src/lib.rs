@@ -40,7 +40,13 @@ fn frontmost_application() -> Option<SourceApplication> {
     None
 }
 
+#[tauri::command]
+fn set_panel_auto_hide_suspended(suspended: bool) {
+    PANEL_AUTO_HIDE_SUSPENDED.store(suspended, Ordering::SeqCst);
+}
+
 static PANEL_VISIBLE: AtomicBool = AtomicBool::new(true);
+static PANEL_AUTO_HIDE_SUSPENDED: AtomicBool = AtomicBool::new(false);
 static PANEL_ANIMATION_ID: AtomicU64 = AtomicU64::new(0);
 const PANEL_WIDTH: f64 = 580.0;
 const PANEL_MARGIN: f64 = 20.0;
@@ -78,7 +84,10 @@ fn current_panel_width(window: &WebviewWindow) -> f64 {
     window
         .outer_size()
         .ok()
-        .map(|size| size.to_logical::<f64>(window.scale_factor().unwrap_or(1.0)).width)
+        .map(|size| {
+            size.to_logical::<f64>(window.scale_factor().unwrap_or(1.0))
+                .width
+        })
         .filter(|width| *width > 0.0)
         .unwrap_or(PANEL_WIDTH)
 }
@@ -91,14 +100,7 @@ fn ease_out_expo(progress: f64) -> f64 {
     }
 }
 
-fn animate_panel(
-    window: WebviewWindow,
-    from_x: f64,
-    to_x: f64,
-    y: f64,
-    height: f64,
-    steps: u64,
-) {
+fn animate_panel(window: WebviewWindow, from_x: f64, to_x: f64, y: f64, height: f64, steps: u64) {
     let animation_id = PANEL_ANIMATION_ID.fetch_add(1, Ordering::SeqCst) + 1;
     let panel_width = current_panel_width(&window);
 
@@ -270,6 +272,7 @@ pub fn run() {
 
             if matches!(event, WindowEvent::Focused(false))
                 && PANEL_VISIBLE.load(Ordering::SeqCst)
+                && !PANEL_AUTO_HIDE_SUSPENDED.load(Ordering::SeqCst)
             {
                 if let Some(webview_window) = window.app_handle().get_webview_window("main") {
                     hide_panel(&webview_window);
@@ -281,7 +284,10 @@ pub fn run() {
                 .add_migrations("sqlite:dev-clipboard-spike.db", migrations)
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![frontmost_application])
+        .invoke_handler(tauri::generate_handler![
+            frontmost_application,
+            set_panel_auto_hide_suspended
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

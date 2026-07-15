@@ -18,11 +18,11 @@ Status:
 | Status | Theme | Card size | Width | Notes |
 | --- | --- | --- | --- | --- |
 | [ ] | Light | Compact | 380px | メディア一覧性、タグ1行、検索窓、横overflow |
-| [ ] | Light | Normal | 600px | MVP標準表示、編集欄、検索Popover |
-| [ ] | Light | Large | 600px | 長文本文、メモ、プレビュー |
+| [ ] | Light | Normal | 580px | MVP標準表示、編集欄、検索Popover |
+| [ ] | Light | Large | 700px | 長文本文、メモ、プレビュー |
 | [ ] | Dark | Compact | 380px | タグ、ボタン、検索窓、コントラスト |
-| [ ] | Dark | Normal | 600px | MVP標準表示、編集欄、検索Popover |
-| [ ] | Dark | Large | 600px | 長文本文、メモ、プレビュー |
+| [ ] | Dark | Normal | 580px | MVP標準表示、編集欄、検索Popover |
+| [ ] | Dark | Large | 700px | 長文本文、メモ、プレビュー |
 
 ## Preflight
 

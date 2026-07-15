@@ -2303,6 +2303,43 @@ function App() {
   }, [dbReady, query, selectedVault, selectedSearchFilters, visibleClipCount]);
 
   useEffect(() => {
+    const suspendAutoHide = Boolean(
+      settingsOpen ||
+        historyDeleteOpen ||
+        filterOpen ||
+        sortOpen ||
+        clipContextMenu ||
+        editingNote ||
+        editingClipTextId ||
+        editingTitleId,
+    );
+
+    invoke("set_panel_auto_hide_suspended", {
+      suspended: suspendAutoHide,
+    }).catch((error) => {
+      reportError(`Panel auto-hide state failed: ${String(error)}`);
+    });
+
+    return () => {
+      if (!suspendAutoHide) return;
+      invoke("set_panel_auto_hide_suspended", { suspended: false }).catch(
+        () => {
+          // The app may be closing or reloading; the next launch starts unsuspended.
+        },
+      );
+    };
+  }, [
+    clipContextMenu,
+    editingClipTextId,
+    editingNote,
+    editingTitleId,
+    filterOpen,
+    historyDeleteOpen,
+    settingsOpen,
+    sortOpen,
+  ]);
+
+  useEffect(() => {
     if (!editingTitleId) return;
     window.requestAnimationFrame(() => {
       titleInputRef.current?.focus();
