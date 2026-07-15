@@ -83,7 +83,7 @@ P0完了後、MVP候補版を他者に渡す前に対応する。
 
 - [~] Settings: Themeのみ実動作。Card sizeは実動作と永続化に接続済み。他のモック項目を整理する。
 - [~] Source app表示: 新規クリップはmacOSの前面アプリ名・Bundle IDを保存する。既存・Demoクリップは内容由来の表示へフォールバックする。実アプリアイコン取得は未実装。
-- [~] Compact / Normal / Large: 切替とCard size保存は実装済み。全カード種・全テーマの実機QAが未完了。
+- [~] Compact / Normal / Large: 切替とCard size保存は実装済み。Largeは見た目の拡大ではなく、Normalの視覚スケールを保ったまま本文・ノート・Details・直接操作を開くレビュー展開モードとして定義済み。全カード種・全テーマの実機QAが未完了。
 - [~] メディアカード: Image / Video / Audio / SVG / Illustrator / PDF / File / URL / Colorの表示ルールはUI検証中心。実クリップボードデータ取得はtext-firstの範囲外。
 - [~] Color: HEX / RGB / HSL / RGBAの表示変換がある。原文保持、alpha、無効値、Copy形式の回帰確認が必要。
 - [ ] リッチテキストをプレーンテキストとして取り込む最小方針を決める。高度な編集はMVP外。

@@ -2496,7 +2496,7 @@ function App() {
 
   function noteDisplayLimit(field: NoteField) {
     if (cardSize === "compact") return field === "before" ? 80 : 48;
-    if (cardSize === "large") return field === "before" ? 240 : 180;
+    if (cardSize === "large") return Number.POSITIVE_INFINITY;
     return field === "before" ? 120 : 72;
   }
 
@@ -4526,7 +4526,10 @@ function App() {
                     <div className="settingRow wide">
                       <div>
                         <strong>Default card size</strong>
-                        <p>Compact for experts, Large for careful review.</p>
+                        <p>
+                          Compact condenses. Large opens review information
+                          without changing the core scale.
+                        </p>
                       </div>
                       <div className="segmented">
                         {CARD_SIZES.map((option) => (

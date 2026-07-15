@@ -129,6 +129,26 @@ Do not use large decorative radius on tool surfaces. Cards should feel compact a
 - Tags use `4px 7px` in app cards and `5px 9px` in the design guide preview.
 - Text fields use `0 12px`; textareas use `10px 11px` for note editing and `15px` for code-body editing.
 
+## Card Size Modes
+
+Card size modes change density and disclosure, not the core visual scale.
+Font size, button size, border radius, tag scale, and the primary card rhythm
+should stay as stable as possible across Normal and Large so users keep spatial
+confidence when switching modes.
+
+- Compact: prioritizes scanning and media density. Some actions may move to
+  context menus or require an extra step.
+- Normal: default daily-use mode. Shows the main action, tags, title, preview,
+  and concise notes.
+- Large: review-expanded mode. It keeps the Normal visual scale where possible,
+  but reveals more content and direct actions: longer code/body preview,
+  untruncated notes, always-visible Details when available, visible delete/edit
+  actions, and full media title/notes.
+
+Large should not become a visually larger card style. Avoid increasing title
+type, tag size, button size, card radius, or basic side padding unless a concrete
+readability bug requires it.
+
 ## Components
 
 Buttons should use icons where possible. Copy is the primary action and uses the accent fill. Save and selected segmented controls may use accent fill. Destructive or review actions use risk colors instead.
