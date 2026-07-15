@@ -167,6 +167,8 @@ const THEME_OPTIONS: Array<{ label: string; value: ThemeMode }> = [
 const THEME_STORAGE_KEY = "dev-clipboard-theme-mode";
 const CARD_SIZE_STORAGE_KEY = "dev-clipboard-card-size";
 const IGNORED_APPS_STORAGE_KEY = "dev-clipboard-ignored-apps";
+const SORT_MODE_STORAGE_KEY = "dev-clipboard-sort-mode";
+const VAULT_STORAGE_KEY = "dev-clipboard-selected-vault";
 const SHIKI_THEME = "github-dark" as const;
 const SHIKI_LANGUAGES = [
   "bash",
@@ -272,6 +274,23 @@ function readStoredCardSize(): CardSize {
   if (typeof window === "undefined") return "normal";
   const stored = window.localStorage.getItem(CARD_SIZE_STORAGE_KEY);
   return stored === "compact" || stored === "large" ? stored : "normal";
+}
+
+function readStoredSortMode(): SortMode {
+  if (typeof window === "undefined") return "recent";
+  const stored = window.localStorage.getItem(SORT_MODE_STORAGE_KEY);
+  return stored === "risk" || stored === "used" ? stored : "recent";
+}
+
+function readStoredVault(): Vault | "All Vaults" {
+  if (typeof window === "undefined") return "All Vaults";
+  const stored = window.localStorage.getItem(VAULT_STORAGE_KEY);
+  return stored === "Chat" ||
+    stored === "Editor" ||
+    stored === "Terminal" ||
+    stored === "All Vaults"
+    ? stored
+    : "All Vaults";
 }
 
 function readStoredIgnoredApps() {
@@ -1017,12 +1036,12 @@ function App() {
   const [clipContextMenu, setClipContextMenu] =
     useState<ClipContextMenu | null>(null);
   const [lastDeletedClip, setLastDeletedClip] = useState<Clip | null>(null);
-  const [sortMode, setSortMode] = useState<SortMode>("recent");
+  const [sortMode, setSortMode] = useState<SortMode>(readStoredSortMode);
   const [sortOpen, setSortOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readStoredThemeMode);
   const [systemTheme, setSystemTheme] = useState<"dark" | "light">("dark");
   const [selectedVault, setSelectedVault] = useState<Vault | "All Vaults">(
-    "All Vaults",
+    readStoredVault,
   );
   const lastSeenRef = useRef<string>("");
   const lastWrittenRef = useRef<string>("");
@@ -1072,6 +1091,14 @@ function App() {
   useEffect(() => {
     window.localStorage.setItem(CARD_SIZE_STORAGE_KEY, cardSize);
   }, [cardSize]);
+
+  useEffect(() => {
+    window.localStorage.setItem(SORT_MODE_STORAGE_KEY, sortMode);
+  }, [sortMode]);
+
+  useEffect(() => {
+    window.localStorage.setItem(VAULT_STORAGE_KEY, selectedVault);
+  }, [selectedVault]);
 
   useEffect(() => {
     window.localStorage.setItem(
