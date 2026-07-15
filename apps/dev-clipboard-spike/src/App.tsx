@@ -1753,10 +1753,12 @@ function App() {
       throw new Error("SQLite database is not ready");
     }
 
-    await runTransaction(db, async () => {
-      for (const clip of DEMO_HEAVY_CLIPS) {
-        await db.execute(
-          `INSERT OR IGNORE INTO clips (
+    setStatus("Adding development demo clips...");
+    await withSqliteRetry(() =>
+      runTransaction(db, async () => {
+        for (const clip of DEMO_HEAVY_CLIPS) {
+          await db.execute(
+            `INSERT OR IGNORE INTO clips (
             id,
             body,
             title,
@@ -1775,28 +1777,28 @@ function App() {
             token_estimate,
             is_demo
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
-          [
-            clip.id,
-            clip.body,
-            clip.title,
-            clip.vault,
-            clip.type,
-            clip.risk,
-            clip.riskLabel,
-            clip.description,
-            clip.whenToUse,
-            clip.before,
-            clip.createdAt,
-            clip.lastUsedAt ?? null,
-            clip.useCount,
-            clip.charCount,
-            clip.lineCount,
-            clip.tokenEstimate,
-            1,
-          ],
-        );
-        await db.execute(
-          `UPDATE clips
+            [
+              clip.id,
+              clip.body,
+              clip.title,
+              clip.vault,
+              clip.type,
+              clip.risk,
+              clip.riskLabel,
+              clip.description,
+              clip.whenToUse,
+              clip.before,
+              clip.createdAt,
+              clip.lastUsedAt ?? null,
+              clip.useCount,
+              clip.charCount,
+              clip.lineCount,
+              clip.tokenEstimate,
+              1,
+            ],
+          );
+          await db.execute(
+            `UPDATE clips
          SET body = $1,
              title = $2,
              vault = $3,
@@ -1811,25 +1813,26 @@ function App() {
              token_estimate = $12,
              is_demo = 1
          WHERE id = $13`,
-          [
-            clip.body,
-            clip.title,
-            clip.vault,
-            clip.type,
-            clip.risk,
-            clip.riskLabel,
-            clip.description,
-            clip.whenToUse,
-            clip.before,
-            clip.charCount,
-            clip.lineCount,
-            clip.tokenEstimate,
-            clip.id,
-          ],
-        );
-        await upsertSearchIndex(clip, db);
-      }
-    });
+            [
+              clip.body,
+              clip.title,
+              clip.vault,
+              clip.type,
+              clip.risk,
+              clip.riskLabel,
+              clip.description,
+              clip.whenToUse,
+              clip.before,
+              clip.charCount,
+              clip.lineCount,
+              clip.tokenEstimate,
+              clip.id,
+            ],
+          );
+          await upsertSearchIndex(clip, db);
+        }
+      }),
+    );
 
     await loadRecentClips(selectedVault, selectedSearchFilters);
     await refreshTotalClipCount(db);
@@ -1841,12 +1844,15 @@ function App() {
       throw new Error("SQLite database is not ready");
     }
 
-    const result = await runTransaction(db, async () => {
-      await db.execute(
-        "DELETE FROM clip_search WHERE id IN (SELECT id FROM clips WHERE is_demo = 1)",
-      );
-      return db.execute("DELETE FROM clips WHERE is_demo = 1");
-    });
+    setStatus("Removing development demo clips...");
+    const result = await withSqliteRetry(() =>
+      runTransaction(db, async () => {
+        await db.execute(
+          "DELETE FROM clip_search WHERE id IN (SELECT id FROM clips WHERE is_demo = 1)",
+        );
+        return db.execute("DELETE FROM clips WHERE is_demo = 1");
+      }),
+    );
     await loadRecentClips(selectedVault, selectedSearchFilters);
     await refreshTotalClipCount(db);
     setStatus(`Removed ${result.rowsAffected} development demo clips.`);
