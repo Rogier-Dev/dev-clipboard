@@ -149,6 +149,11 @@ Large should not become a visually larger card style. Avoid increasing title
 type, tag size, button size, card radius, or basic side padding unless a concrete
 readability bug requires it.
 
+In Large, notes have higher review priority than showing a very tall body
+preview. Keep the body/code preview tall enough to understand the content, but
+not so tall that Description, When to use, and Before are pushed far below the
+first viewport of the card.
+
 ## Components
 
 Buttons should use icons where possible. Copy is the primary action and uses the accent fill. Save and selected segmented controls may use accent fill. Destructive or review actions use risk colors instead.

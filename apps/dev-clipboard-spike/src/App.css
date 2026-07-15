@@ -2521,7 +2521,7 @@ button:active {
 }
 
 .card-large .codeBlock {
-    max-height: 640px;
+    max-height: 220px;
 }
 
 .codeBlock.expanded {
@@ -2533,7 +2533,7 @@ button:active {
 }
 
 .card-large .codeBlock.expanded {
-    max-height: 640px;
+    max-height: 260px;
 }
 
 .expandCodeButton {
@@ -2610,7 +2610,8 @@ button:active {
 
 .noteLine p {
     min-width: 0;
-    flex: 1 1 auto;
+    max-width: calc(100% - 28px);
+    flex: 0 1 auto;
 }
 
 .noteLine.emptyNote {

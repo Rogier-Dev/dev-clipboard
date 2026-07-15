@@ -108,7 +108,7 @@ Status:
 | [ ] | Theme | Light / Dark / Systemを切り替える | パネル全体の色が破綻しない | |
 | [ ] | Theme restart | Theme変更後に再起動 | 選択が復元される | |
 | [ ] | Card size | Compact / Normal / Largeを切り替える | 幅、カード、検索窓が崩れない | |
-| [ ] | Large mode | Largeへ切り替える | フォント、ボタン、角丸、基本余白はNormalと大きく変えず、本文・ノート・Details・直接操作が展開される | |
+| [ ] | Large mode | Largeへ切り替える | フォント、ボタン、角丸、基本余白はNormalと大きく変えず、本文・ノート・Details・直接操作が展開される | 本文プレビューでDescription / When to use / Beforeが下へ押し出されすぎないこと |
 | [ ] | Card restart | Card size変更後に再起動 | 選択が復元される | |
 | [ ] | Ignored apps | 現在アプリをIgnored appsへ追加 | そのBundle IDからのコピーが保存されない | |
 | [ ] | Ignored remove | Ignored appsから削除 | 再び保存される | |

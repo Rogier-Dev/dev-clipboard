@@ -279,11 +279,12 @@ const DEMO_HEAVY_CLIPS: Clip[] = ([
     type: "Command",
     risk: "check",
     riskLabel: "Review",
-    description: "Mock command that may change local dependencies.",
+    description:
+      "Mock command that changes local dependencies. Use this card to compare how Compact, Normal, and Large handle a medium-length Description line without changing the visual scale of the card.",
     whenToUse:
-      "When installing packages after checking package.json and lockfile changes.",
+      "When installing packages after checking package.json, lockfile changes, package source, and whether the command belongs to the current project workspace.",
     before:
-      "Confirm the project directory and review the package source first.",
+      "Confirm the project directory, review the package source, and check that the dependency change is intentional before copying this command.",
     createdAt: "2026-07-01T03:14:30.000Z",
     useCount: 0,
     charCount: 11,
@@ -465,9 +466,12 @@ Important:
     type: "Markdown",
     risk: "check",
     riskLabel: "Large context",
-    description: "Mock long-context note used to check token-heavy card tags.",
-    whenToUse: "When preparing a large prompt or debugging summary for AI.",
-    before: "Trim repeated logs and remove secrets before sending.",
+    description:
+      "Mock long-context note used to compare card density across Compact, Normal, and Large. Large should reveal this full note while keeping title, buttons, tags, radius, and spacing visually consistent with Normal.",
+    whenToUse:
+      "Use when preparing a large AI prompt, debugging summary, or handoff where the notes explain why the body exists and what the receiver should inspect first.",
+    before:
+      "Trim repeated logs, remove secrets, check account IDs and private URLs, and confirm the text is safe to paste into the target app before copying.",
     createdAt: "2026-06-30T03:00:00.000Z",
     useCount: 0,
     charCount: 128000,
@@ -1757,11 +1761,14 @@ function App() {
              type = $4,
              risk = $5,
              risk_label = $6,
-             char_count = $7,
-             line_count = $8,
-             token_estimate = $9,
+             description = $7,
+             when_to_use = $8,
+             before = $9,
+             char_count = $10,
+             line_count = $11,
+             token_estimate = $12,
              is_demo = 1
-         WHERE id = $10`,
+         WHERE id = $13`,
           [
             clip.body,
             clip.title,
@@ -1769,6 +1776,9 @@ function App() {
             clip.type,
             clip.risk,
             clip.riskLabel,
+            clip.description,
+            clip.whenToUse,
+            clip.before,
             clip.charCount,
             clip.lineCount,
             clip.tokenEstimate,
