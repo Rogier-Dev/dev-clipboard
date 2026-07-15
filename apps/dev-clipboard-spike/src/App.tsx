@@ -2308,10 +2308,7 @@ function App() {
         historyDeleteOpen ||
         filterOpen ||
         sortOpen ||
-        clipContextMenu ||
-        editingNote ||
-        editingClipTextId ||
-        editingTitleId,
+        clipContextMenu,
     );
 
     invoke("set_panel_auto_hide_suspended", {
@@ -2330,9 +2327,6 @@ function App() {
     };
   }, [
     clipContextMenu,
-    editingClipTextId,
-    editingNote,
-    editingTitleId,
     filterOpen,
     historyDeleteOpen,
     settingsOpen,
