@@ -1484,7 +1484,7 @@ function App() {
         try {
           const db = await Database.load(DB_PATH);
           dbRef.current = db;
-          await db.execute("PRAGMA busy_timeout = 5000");
+          await db.execute("PRAGMA busy_timeout = 8000");
           await deleteCapturedClipboardReadErrors(db);
           const rows = await db.select<Clip[]>(
             `SELECT
@@ -1641,11 +1641,15 @@ function App() {
       throw new Error("SQLite database is not ready");
     }
 
-    await db.execute(
-      `UPDATE clips
-       SET last_used_at = $1, use_count = use_count + 1
-       WHERE id = $2`,
-      [new Date().toISOString(), clip.id],
+    await enqueueDbOperation(() =>
+      withSqliteRetry(() =>
+        db.execute(
+          `UPDATE clips
+           SET last_used_at = $1, use_count = use_count + 1
+           WHERE id = $2`,
+          [new Date().toISOString(), clip.id],
+        ),
+      ),
     );
   }
 
@@ -1654,8 +1658,12 @@ function App() {
       throw new Error("SQLite database is not ready");
     }
 
-    const rows = await db.select<Array<{ count: number }>>(
-      "SELECT COUNT(*) as count FROM clips",
+    const rows = await enqueueDbOperation(() =>
+      withSqliteRetry(() =>
+        db.select<Array<{ count: number }>>(
+          "SELECT COUNT(*) as count FROM clips",
+        ),
+      ),
     );
     const count = rows[0]?.count ?? 0;
     setTotalClipCount(count);
@@ -1754,7 +1762,7 @@ function App() {
     }
 
     setStatus("Adding development demo clips...");
-    await withSqliteRetry(() =>
+    await enqueueDbOperation(() =>
       runTransaction(db, async () => {
         const demoCreatedAt = new Date();
 
@@ -1856,7 +1864,7 @@ function App() {
     }
 
     setStatus("Removing development demo clips...");
-    const result = await withSqliteRetry(() =>
+    const result = await enqueueDbOperation(() =>
       runTransaction(db, async () => {
         await db.execute(
           "DELETE FROM clip_search WHERE id IN (SELECT id FROM clips WHERE is_demo = 1)",
@@ -1883,13 +1891,15 @@ function App() {
     };
     const column = NOTE_FIELDS[field].dbColumn;
 
-    await runTransaction(db, async () => {
-      await db.execute(`UPDATE clips SET ${column} = $1 WHERE id = $2`, [
-        value,
-        clip.id,
-      ]);
-      await upsertSearchIndex(updatedClip, db);
-    });
+    await enqueueDbOperation(() =>
+      runTransaction(db, async () => {
+        await db.execute(`UPDATE clips SET ${column} = $1 WHERE id = $2`, [
+          value,
+          clip.id,
+        ]);
+        await upsertSearchIndex(updatedClip, db);
+      }),
+    );
 
     setClips((current) =>
       current.map((item) => (item.id === clip.id ? updatedClip : item)),
@@ -1931,36 +1941,38 @@ function App() {
       matchReason: undefined,
     };
 
-    await runTransaction(db, async () => {
-      await db.execute(
-        `UPDATE clips
-       SET body = $1,
-           title = $2,
-           vault = $3,
-           type = $4,
-           risk = $5,
-           risk_label = $6,
-           before = $7,
-           char_count = $8,
-           line_count = $9,
-           token_estimate = $10
-       WHERE id = $11`,
-        [
-          updatedClip.body,
-          updatedClip.title,
-          updatedClip.vault,
-          updatedClip.type,
-          updatedClip.risk,
-          updatedClip.riskLabel,
-          updatedClip.before,
-          updatedClip.charCount,
-          updatedClip.lineCount,
-          updatedClip.tokenEstimate,
-          updatedClip.id,
-        ],
-      );
-      await upsertSearchIndex(updatedClip, db);
-    });
+    await enqueueDbOperation(() =>
+      runTransaction(db, async () => {
+        await db.execute(
+          `UPDATE clips
+         SET body = $1,
+             title = $2,
+             vault = $3,
+             type = $4,
+             risk = $5,
+             risk_label = $6,
+             before = $7,
+             char_count = $8,
+             line_count = $9,
+             token_estimate = $10
+         WHERE id = $11`,
+          [
+            updatedClip.body,
+            updatedClip.title,
+            updatedClip.vault,
+            updatedClip.type,
+            updatedClip.risk,
+            updatedClip.riskLabel,
+            updatedClip.before,
+            updatedClip.charCount,
+            updatedClip.lineCount,
+            updatedClip.tokenEstimate,
+            updatedClip.id,
+          ],
+        );
+        await upsertSearchIndex(updatedClip, db);
+      }),
+    );
 
     setClips((current) =>
       current.map((item) => (item.id === clip.id ? updatedClip : item)),
@@ -1986,13 +1998,15 @@ function App() {
       matchReason: undefined,
     };
 
-    await runTransaction(db, async () => {
-      await db.execute("UPDATE clips SET title = $1 WHERE id = $2", [
-        title,
-        clip.id,
-      ]);
-      await upsertSearchIndex(updatedClip, db);
-    });
+    await enqueueDbOperation(() =>
+      runTransaction(db, async () => {
+        await db.execute("UPDATE clips SET title = $1 WHERE id = $2", [
+          title,
+          clip.id,
+        ]);
+        await upsertSearchIndex(updatedClip, db);
+      }),
+    );
 
     setClips((current) =>
       current.map((item) => (item.id === clip.id ? updatedClip : item)),
@@ -2243,6 +2257,10 @@ function App() {
           setStatus("Clipboard has no readable text.");
           return;
         }
+        if (isSqliteLockedError(error)) {
+          setStatus("SQLite is busy. Clipboard capture will retry.");
+          return;
+        }
         reportError(`Clipboard read failed: ${String(error)}`);
       } finally {
         captureInFlightRef.current = false;
@@ -2410,10 +2428,12 @@ function App() {
     try {
       setClipOperation(clip.id, "delete");
       reportStatus(`Deleting: ${clip.title}`);
-      await runTransaction(db, async () => {
-        await db.execute("DELETE FROM clip_search WHERE id = $1", [clip.id]);
-        await db.execute("DELETE FROM clips WHERE id = $1", [clip.id]);
-      });
+      await enqueueDbOperation(() =>
+        runTransaction(db, async () => {
+          await db.execute("DELETE FROM clip_search WHERE id = $1", [clip.id]);
+          await db.execute("DELETE FROM clips WHERE id = $1", [clip.id]);
+        }),
+      );
       setClips((current) => current.filter((item) => item.id !== clip.id));
       setResultTotal((current) => Math.max(0, current - 1));
       setTotalClipCount((current) => Math.max(0, current - 1));
@@ -2453,10 +2473,12 @@ function App() {
 
     setHistoryDeleting(true);
     try {
-      await runTransaction(db, async () => {
-        await db.execute("DELETE FROM clip_search");
-        await db.execute("DELETE FROM clips");
-      });
+      await enqueueDbOperation(() =>
+        runTransaction(db, async () => {
+          await db.execute("DELETE FROM clip_search");
+          await db.execute("DELETE FROM clips");
+        }),
+      );
       setClips([]);
       setResultTotal(0);
       setTotalClipCount(0);
