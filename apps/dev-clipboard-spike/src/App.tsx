@@ -119,12 +119,13 @@ type ClipRow = Omit<Clip, "matchField">;
 
 const DB_PATH = "sqlite:dev-clipboard-spike.db";
 const APP_BUNDLE_ID = "com.department.devclipboard";
-const PANEL_WIDTH = 600;
 const COMPACT_PANEL_WIDTH = 380;
+const NORMAL_PANEL_WIDTH = 620;
+const LARGE_PANEL_WIDTH = 760;
+const DEFAULT_PANEL_WIDTH = NORMAL_PANEL_WIDTH;
 const PANEL_LEFT_MARGIN = 20;
-const PANEL_WINDOW_WIDTH = PANEL_WIDTH;
 const PANEL_VERTICAL_PADDING = 20;
-const PANEL_HIDDEN_X = -(PANEL_WIDTH + PANEL_LEFT_MARGIN);
+const PANEL_HIDDEN_X = -(LARGE_PANEL_WIDTH + PANEL_LEFT_MARGIN);
 const RISK_ORDER: Record<RiskLevel, number> = {
   destructive: 0,
   check: 1,
@@ -224,6 +225,12 @@ function isCapturedClipboardReadError(text: string) {
 
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+function panelWidthForCardSize(size: CardSize) {
+  if (size === "compact") return COMPACT_PANEL_WIDTH;
+  if (size === "large") return LARGE_PANEL_WIDTH;
+  return NORMAL_PANEL_WIDTH;
 }
 
 async function withSqliteRetry<T>(work: () => Promise<T>): Promise<T> {
@@ -1405,7 +1412,7 @@ function App() {
         height,
         visibleX: workAreaPosition.x + PANEL_LEFT_MARGIN,
         visibleY: workAreaPosition.y + PANEL_VERTICAL_PADDING,
-        hiddenX: workAreaPosition.x - PANEL_WIDTH - PANEL_LEFT_MARGIN,
+        hiddenX: workAreaPosition.x - LARGE_PANEL_WIDTH - PANEL_LEFT_MARGIN,
       };
     }
 
@@ -1417,7 +1424,7 @@ function App() {
         const geometry = await getPanelGeometry();
         await appWindow.setAlwaysOnTop(true);
         await appWindow.setSize(
-          new LogicalSize(PANEL_WINDOW_WIDTH, geometry.height),
+          new LogicalSize(DEFAULT_PANEL_WIDTH, geometry.height),
         );
         await appWindow.setPosition(
           new LogicalPosition(geometry.visibleX, geometry.visibleY),
@@ -1437,8 +1444,7 @@ function App() {
         if (!appWindow) return;
 
         const monitor = await currentMonitor();
-        const panelWidth =
-          cardSize === "compact" ? COMPACT_PANEL_WIDTH : PANEL_WIDTH;
+        const panelWidth = panelWidthForCardSize(cardSize);
 
         if (!monitor) {
           await appWindow.setSize(new LogicalSize(panelWidth, 740));
