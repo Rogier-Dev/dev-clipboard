@@ -1756,7 +1756,16 @@ function App() {
     setStatus("Adding development demo clips...");
     await withSqliteRetry(() =>
       runTransaction(db, async () => {
-        for (const clip of DEMO_HEAVY_CLIPS) {
+        const demoCreatedAt = new Date();
+
+        for (const [index, demoClip] of DEMO_HEAVY_CLIPS.entries()) {
+          const clip = {
+            ...demoClip,
+            createdAt: new Date(
+              demoCreatedAt.getTime() - index * 1000,
+            ).toISOString(),
+          };
+
           await db.execute(
             `INSERT OR IGNORE INTO clips (
             id,
@@ -1808,11 +1817,12 @@ function App() {
              description = $7,
              when_to_use = $8,
              before = $9,
-             char_count = $10,
-             line_count = $11,
-             token_estimate = $12,
+             created_at = $10,
+             char_count = $11,
+             line_count = $12,
+             token_estimate = $13,
              is_demo = 1
-         WHERE id = $13`,
+         WHERE id = $14`,
             [
               clip.body,
               clip.title,
@@ -1823,6 +1833,7 @@ function App() {
               clip.description,
               clip.whenToUse,
               clip.before,
+              clip.createdAt,
               clip.charCount,
               clip.lineCount,
               clip.tokenEstimate,
