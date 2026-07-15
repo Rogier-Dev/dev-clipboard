@@ -2826,15 +2826,15 @@ function App() {
               </button>
             )}
           </span>
+          <button
+            className="editNoteButton"
+            onClick={() => startNoteEdit(clip, field)}
+            title={`Edit ${label}`}
+            type="button"
+          >
+            <Pencil size={14} />
+          </button>
         </p>
-        <button
-          className="editNoteButton"
-          onClick={() => startNoteEdit(clip, field)}
-          title={`Edit ${label}`}
-          type="button"
-        >
-          <Pencil size={14} />
-        </button>
       </div>
     );
   }

@@ -2608,7 +2608,8 @@ button:active {
 
 .noteLine p {
     min-width: 0;
-    display: inline;
+    display: block;
+    line-height: 1.45;
 }
 
 .noteLine.emptyNote {
@@ -2650,7 +2651,7 @@ button:active {
     height: 20px;
     place-items: center;
     margin-left: 7px;
-    vertical-align: text-bottom;
+    vertical-align: -4px;
     border: 0;
     border-radius: 7px;
     padding: 0;
