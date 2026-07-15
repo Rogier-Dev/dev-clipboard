@@ -210,6 +210,18 @@ function isSqliteLockedError(error: unknown) {
   return /database is locked|code:\s*5/i.test(String(error));
 }
 
+function isClipboardTextUnavailable(error: unknown) {
+  return /clipboard contents were not available|requested format|clipboard is empty/i.test(
+    String(error),
+  );
+}
+
+function isCapturedClipboardReadError(text: string) {
+  return /^Clipboard read failed: .*clipboard contents were not available.*clipboard is empty\.?$/i.test(
+    text.trim(),
+  );
+}
+
 function wait(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
@@ -1473,6 +1485,7 @@ function App() {
           const db = await Database.load(DB_PATH);
           dbRef.current = db;
           await db.execute("PRAGMA busy_timeout = 5000");
+          await deleteCapturedClipboardReadErrors(db);
           const rows = await db.select<Clip[]>(
             `SELECT
               id,
@@ -1680,6 +1693,35 @@ function App() {
     }
 
     throw new Error("SQLite transaction retry limit reached");
+  }
+
+  async function deleteCapturedClipboardReadErrors(db = dbRef.current) {
+    if (!db) {
+      throw new Error("SQLite database is not ready");
+    }
+
+    const bodyPattern =
+      "Clipboard read failed:%clipboard contents were not available%clipboard is empty%";
+
+    await withSqliteRetry(() =>
+      runTransaction(db, async () => {
+        await db.execute(
+          `DELETE FROM clip_search
+           WHERE id IN (
+             SELECT id FROM clips
+             WHERE title LIKE 'Clipboard read failed:%'
+               AND body LIKE $1
+           )`,
+          [bodyPattern],
+        );
+        await db.execute(
+          `DELETE FROM clips
+           WHERE title LIKE 'Clipboard read failed:%'
+             AND body LIKE $1`,
+          [bodyPattern],
+        );
+      }),
+    );
   }
 
   async function upsertSearchIndex(clip: Clip, db = dbRef.current) {
@@ -2096,6 +2138,12 @@ function App() {
         if (!normalized || disposed) return;
         if (normalized === lastSeenRef.current) return;
 
+        if (isCapturedClipboardReadError(normalized)) {
+          lastSeenRef.current = normalized;
+          setStatus("Clipboard read failure text was not saved as a clip.");
+          return;
+        }
+
         if (normalized === queryRef.current.trim()) {
           setStatus("Search text was not saved as a clip.");
           return;
@@ -2174,6 +2222,10 @@ function App() {
         lastSeenRef.current = normalized;
         setStatus("Captured clipboard text into SQLite");
       } catch (error) {
+        if (isClipboardTextUnavailable(error)) {
+          setStatus("Clipboard has no readable text.");
+          return;
+        }
         reportError(`Clipboard read failed: ${String(error)}`);
       } finally {
         captureInFlightRef.current = false;
