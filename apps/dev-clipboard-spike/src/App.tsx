@@ -126,6 +126,8 @@ const DEFAULT_PANEL_WIDTH = NORMAL_PANEL_WIDTH;
 const PANEL_LEFT_MARGIN = 20;
 const PANEL_VERTICAL_PADDING = 20;
 const PANEL_HIDDEN_X = -(LARGE_PANEL_WIDTH + PANEL_LEFT_MARGIN);
+const SQLITE_MAX_ATTEMPTS = 10;
+const SQLITE_RETRY_BASE_MS = 300;
 const RISK_ORDER: Record<RiskLevel, number> = {
   destructive: 0,
   check: 1,
@@ -234,14 +236,12 @@ function panelWidthForCardSize(size: CardSize) {
 }
 
 async function withSqliteRetry<T>(work: () => Promise<T>): Promise<T> {
-  const maxAttempts = 5;
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+  for (let attempt = 1; attempt <= SQLITE_MAX_ATTEMPTS; attempt += 1) {
     try {
       return await work();
     } catch (error) {
-      if (attempt < maxAttempts && isSqliteLockedError(error)) {
-        await wait(250 * attempt);
+      if (attempt < SQLITE_MAX_ATTEMPTS && isSqliteLockedError(error)) {
+        await wait(SQLITE_RETRY_BASE_MS * attempt);
         continue;
       }
       throw error;
@@ -1495,7 +1495,8 @@ function App() {
         try {
           const db = await Database.load(DB_PATH);
           dbRef.current = db;
-          await db.execute("PRAGMA busy_timeout = 8000");
+          await db.execute("PRAGMA busy_timeout = 12000");
+          await db.execute("PRAGMA journal_mode = WAL");
           await deleteCapturedClipboardReadErrors(db);
           const rows = await db.select<Clip[]>(
             `SELECT
@@ -1685,9 +1686,7 @@ function App() {
     db: Database,
     work: () => Promise<T>,
   ): Promise<T> {
-    const maxAttempts = 5;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    for (let attempt = 1; attempt <= SQLITE_MAX_ATTEMPTS; attempt += 1) {
       try {
         await db.execute("BEGIN IMMEDIATE");
         try {
@@ -1703,8 +1702,8 @@ function App() {
           throw error;
         }
       } catch (error) {
-        if (attempt < maxAttempts && isSqliteLockedError(error)) {
-          await wait(250 * attempt);
+        if (attempt < SQLITE_MAX_ATTEMPTS && isSqliteLockedError(error)) {
+          await wait(SQLITE_RETRY_BASE_MS * attempt);
           continue;
         }
         throw error;
@@ -2471,6 +2470,10 @@ function App() {
       setClipContextMenu(null);
       reportStatus(`Deleted clip: ${clip.title}. Press Command+Z to undo.`);
     } catch (error) {
+      if (isSqliteLockedError(error)) {
+        reportError("Delete failed: SQLite is busy. Please try again.");
+        return;
+      }
       reportError(`Delete failed: ${String(error)}`);
     } finally {
       setClipOperation(clip.id, null);
