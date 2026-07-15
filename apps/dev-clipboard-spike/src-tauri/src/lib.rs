@@ -42,7 +42,7 @@ fn frontmost_application() -> Option<SourceApplication> {
 
 static PANEL_VISIBLE: AtomicBool = AtomicBool::new(true);
 static PANEL_ANIMATION_ID: AtomicU64 = AtomicU64::new(0);
-const PANEL_WIDTH: f64 = 600.0;
+const PANEL_WIDTH: f64 = 580.0;
 const PANEL_MARGIN: f64 = 20.0;
 const PANEL_SHOW_STEPS: u64 = 14;
 const PANEL_HIDE_STEPS: u64 = 21;
